@@ -12,7 +12,9 @@ function selectLevel(lvid) {
         .classList.add("selected");
 
     // Set correct level URL
-    document.getElementById("edit_lvl_btn").href = window.location.href + "/level/" + lvid;
+    document.getElementById("edit_lvl_btn").href = "/"
+        + document.querySelector("body").dataset.dungeon
+        + "/level/" + lvid;
 }
 
 function saveLevels() {
@@ -22,7 +24,7 @@ function saveLevels() {
     for (let i = 0; i < all_textboxes.length; i++) {
         update["levels"][i + 1] = all_textboxes[i].value;
     }
-    fetch("/api/save/dungeon", {
+    fetch("/api/save/" + document.querySelector("body").dataset.dungeon, {
         method: "POST",
         headers: {
             "Accept": "application/json",

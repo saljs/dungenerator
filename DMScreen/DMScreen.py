@@ -25,6 +25,7 @@ def level_index(dungeon: str):
         abort(404)
     return render_template(
         "level_index.html",
+        dungen_name = dungeon,
         dungeon = d,
     )
 

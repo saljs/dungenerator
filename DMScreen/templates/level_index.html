@@ -6,7 +6,7 @@
         <link rel="stylesheet" href="/static/style.css">
         <script src="/static/level_index.js"></script>
     </head>
-    <body class="container">
+    <body class="container" data-dungeon="{{ dungen_name }}">
         <div class="buttons container cols">
         {% for lvid in dungeon.levels %}
             <a class="choose_lvl_btn" data-lvid="{{ lvid }}">Level {{ lvid }}</a>
