@@ -49,8 +49,6 @@ def encounter_screen(dungeon: str, roomId: str):
         if app.config["BOOKS_URL"]:
             return app.config["BOOKS_URL"].replace("$b", book).replace("$p", str(page))
         return "#"
-    print(roomId)
-    print(dungeon)
     return render_template(
         "encounter_screen.html",
         dungeon = d,
