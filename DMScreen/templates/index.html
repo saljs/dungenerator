@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen</title>
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+    <body class="container cols">
+        <h1>Enter a dungeon:</h1>
+        <div class="buttons container cols">
+        {% for dungeon in dungeons %}
+            <a href="/{{ dungeon }}">{{ dungeon }}</a>
+        {% endfor %}
+        </div>
+    </body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen: Encounter</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/table_style.css">
+        <script src="/static/encounters.js"></script>
+        <style>
+            .buttons button {
+                margin: 10px;
+            }
+            button {
+                font-size: 1.2em;
+            }
+            .row-dead {
+                background-color: coral;
+            }
+        </style>
+    </head>
+    <body class="container cols">
+        <h1>Encounter</h1>
+        <pre> {{ dungeon.room_notes[roomId] }} </pre>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Initiative</th>
+                    <th>Remaining HP</th>
+                    <th>Add damge</th>
+                    <th>XP</th>
+                    <th>Book</th>
+                </tr>
+            </thead>
+            <tbody id="encounter-table">
+                {% for item in dungeon.room_encounters[roomId].items %}
+                    <tr>
+                        <td>
+                            <a target="blank" href="{{ createBookLink(item.book, item.book_page) }}">
+                                {{ item.name }}
+                            </a>
+                        </td>
+                        <td data-initiative="{{ item.initiative }}">
+                            <input type="number" />
+                        </td>
+                        <td class="enemy-hp">
+                            <input type="number" value="{{ item.hp }}" />
+                        </td>
+                        <td class="add-dmg">
+                            <button>Add damage</button>
+                        </td>
+                        <td>
+                            {{ item.xp }}
+                        </td>
+                        <td>
+                            {{ item.book }}pg{{ item.book_page }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="buttons">
+            <button id="add-ally">Add ally</button>
+            <button id="tally-xp">Tally XP</button>
+            <button id="sort-init">Arrange in initiative order</button>
+        </div>
+    </body>
+</html>

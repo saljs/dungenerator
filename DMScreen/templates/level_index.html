@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <script src="/static/level_index.js"></script>
+    </head>
+    <body class="container">
+        <div class="buttons container cols">
+        {% for lvid in dungeon.levels %}
+            <a class="choose_lvl_btn" data-lvid="{{ lvid }}">Level {{ lvid }}</a>
+        {% endfor %}
+        </div>
+        <div class="container cols stretch">
+            <div class="notes stretch">
+            {% for lvid in dungeon.levels %}
+                <textarea spellcheck="true" data-lvid="{{ lvid }}">{{ dungeon.level_notes[lvid] }}</textarea>
+            {% endfor %}
+            </div>
+            <div class="buttons container">
+                <a id="edit_lvl_btn">Select level</a>
+                <a class="success" id="save_btn">Save</a>
+            </div>
+        </div>
+    </body>
+</html>

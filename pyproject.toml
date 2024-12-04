@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["dungen", "DMScreen"]
+
+[tool.setuptools.package-data]
+DMScreen = [
+    "templates/*.html",
+    "static/*.js",
+    "static/*.css",
+    "static/*.svg",
+]
+
+[tool.setuptools.packages.find]
+include = ["dungen*", "DMScreen*"]
+namespaces = false
+
+[project]
+name = "dungenerator"
+version = "0.0.1"
+authors = [
+  { name="Sal Skare", email="salskare@gmail.com" },
+]
+description = "Generate random dungeon maps from templates."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "Flask>=3.1.0",
+    "PyYAML>6.0.0",
+    "imagesize>1.4.0",
+    "progressbar2>=4.5.0",
+    "svg.py>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+]
+
+[project.urls]
+Homepage = "https://github.com/saljs/dungenerator"
+Issues = "https://github.com/saljs/dungenerator/issues"
+
+[project.scripts]
+dungen = "dungen:main_func"
+DMScreen-server = "DMScreen:main_func"

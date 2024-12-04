@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen: Level {{ lvid }}</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/table_style.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.2.0/d3.min.js"></script>
+        <script src="/static/svg_view.js"></script>
+        <script src="/static/level_editor.js"></script>
+    </head>
+    <body class="container" data-dungeon="{{ dungen_name }}">
+        <div class="container stretch cols">
+            <div class="buttons container">
+                <div class="checkboxes">
+                    <label>
+                        <input type="checkbox" id="show_monsters_btn" />
+                        Show monsters
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show_traps_btn">
+                        Show traps
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show_shops_btn">
+                        Show shops
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show_treasure_btn">
+                        Show treasure
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show_stairs_up">
+                        Show stairs up
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show_stairs_down">
+                        Show stairs down
+                    </label>
+                </div>
+                <a id="zoom_to_fit_btn">Zoom to fit</a>
+                <a id="add_stamp_btn">Add stamp</a>
+                <a href="/{{ dungen_name }}/map/{{ lvid }}" target="blank" id="export_map_btn">Map view</a>
+                <a href="/{{ dungen_name }}/export/{{ lvid }}" target="blank" id="export_map_btn">Export as map</a>
+                <a class="success" id="save_btn">Save</a>
+            </div>
+            <div class="container stretch">
+                <div class="map" data-scale="{{ dungeon.scale }}" data-lvid="{{ lvid }}">
+                    {{ dungeon.images[lvid] | safe }}
+                </div>
+                <div class="notes cols">
+                    <div id="room_info"></div>
+                    <div id="encounter">
+                        <h3>Encounter items</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Initiative</th>
+                                    <th>HP</th>
+                                    <th>XP</th>
+                                    <th>Book</th>
+                                    <th>Page</th>
+                                    <th>Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="encounter_items"></tbody>
+                        </table>
+                        <a href="#" id="encounter_link" target="_blank">
+                            Go to encounter
+                        </a>
+                        <h3>Add item</h3>
+                        <form class="encounter_item">
+                            <label>
+                                Name <input type="text" name="name" />
+                            </label>
+                            <label>
+                                Initiative <input type="number" name="initiative" />
+                            </label>
+                            <label>
+                                HP <input type="number" name="hp" />
+                            </label>
+                            <label>
+                                XP <input type="number" name="xp" />
+                            </label>
+                            <label>
+                                Book <input type="text" name="book" />
+                            </label>
+                            <label>
+                                Page <input type="number" name="book_page" />
+                            </label>
+                            <input type="submit" value="Add Enemy"/>
+                        </form>
+                    </div>
+                </div>
+                <div id="stamp-list">
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

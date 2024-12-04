@@ -1,0 +1,9 @@
+# Visual assets
+assets/
+
+# Python artifacts
+build/
+.venv/
+*.egg
+*.egg-info
+**/__pycache__/
