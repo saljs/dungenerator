@@ -53,8 +53,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Add in click-to-drag handler
     const light = document.getElementById("light-mask-rect");
-    const lightHandler = (x, y, ev) => {
-        console.log(ev);
+    const lightHandler = (x, y) => {
         set_light_mask(
             light,
             x, y, svgWidth, svgHeight,
@@ -62,18 +61,18 @@ document.addEventListener("DOMContentLoaded", function() {
         );
     };
     const svg_view = new SVGView(null,
-        (x, y, ev) => {
+        (ev) => {
             ev.preventDefault();
             light_radius++;
             if (light_radius >= light_radius_options.length) {
                 light_radius = 0;
             }
-            lightHandler(x, y, ev);
+            lightHandler(ev.layerX, ev.layerY);
         }, 
-        (x, y, ev) => {
+        (ev) => {
             if (ev.shiftKey) {
                 // Only move light if shift key is held
-                lightHandler(x, y, ev);
+                lightHandler(ev.layerX, ev.layerY);
             }
         });
 
@@ -82,9 +81,17 @@ document.addEventListener("DOMContentLoaded", function() {
         if (ev.key === 'z') {
             svg_view.zoomToExtents();
         }
-        else if (ev.key === 'l') {
-
-            svg.dispatchEvent();
-        }
     });
+
+    // Check if we need to zoom to a room
+    if (window.location.hash) {
+        const room = document.getElementById("room-" + window.location.hash.slice(1));
+        if (room) {
+            svg_view.zoomTo(
+                room.x.animVal.value,
+                room.y.animVal.value,
+                room.width.animVal.value,
+            );
+        }
+    }
 });

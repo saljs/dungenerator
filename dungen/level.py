@@ -11,7 +11,7 @@ class Level:
     def __init__(
         self,
         spec: LevelSpec,
-        up: Optional[List[Point]] = None,
+        up: List[Point],
     ):
         self.width = spec.width
         self.height = spec.height

@@ -2,13 +2,27 @@ import yaml
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .room_generators import LevelSpec
 from .connections import Bound
 from .level_drawer import FillPatterns, paths_to_patterns
 from .rooms import Point
 
+
+class DunSpecLoader(yaml.SafeLoader):
+    def __init__(self, stream):
+        self.root = Path(stream.name).parent
+        super().__init__(stream)
+
+def construct_use(loader: DunSpecLoader, node: yaml.Node) -> Any:
+    if not isinstance(node, yaml.ScalarNode):
+        raise AttributeError(f"{node} is not a file path.")
+    file = loader.root / loader.construct_scalar(node)
+    with file.open() as sf:
+        return yaml.load(sf, DunSpecLoader)
+
+yaml.add_constructor("!use", construct_use, DunSpecLoader)
 
 @dataclass(frozen=True)
 class DunSpec:
@@ -27,16 +41,17 @@ class DunSpec:
     scale: int = 1
 
     # Number of (top) entrances to the dungeon.
-    # If unspecified, it is randomly chosen from the LevelSpec.
-    entrances: Optional[int] = None
+    entrances: int = 1
 
     @classmethod
     def from_yaml(cls, spec_file: Path) -> "DunSpec":
         with spec_file.open() as sf:
-            spec = yaml.safe_load(sf)
+            spec = yaml.load(sf, DunSpecLoader)
+        scale_factor = spec.get("scale", 1)
         level_specs: Dict[str, LevelSpec] = {}
+        textures: Dict[LevelSpec, FillPatterns] = {}
         dict_to_bound = lambda d: Bound(d["lower"], d["upper"])
-        for name, level in spec["levels"].items():
+        for name, level in spec["floor_types"].items():
             level_specs[name] = LevelSpec(
                 name,
                 spec["width"],
@@ -55,29 +70,27 @@ class DunSpec:
                 monster_chance = level["monster_chance"],
                 shop_chance = level["shop_chance"],
                 treasure_chance = level["treasure_chance"],
-                stairs_up = dict_to_bound(level["stairs_up"]),
                 stairs_down = dict_to_bound(level["stairs_down"]),
                 probability = level["probability"],
                 extra = level.get("extra", {}),
             )
-        scale_factor = spec.get("scale", 1)
+            filepaths = level["textures"]
+            textures[level_specs[name]] = paths_to_patterns(
+                Path(filepaths["background"]).absolute(),
+                Path(filepaths["room"]).absolute(),
+                Path(filepaths["hallway"]).absolute(),
+                Path(filepaths["room_wall"]).absolute(),
+                Path(filepaths["hall_wall"]).absolute(),
+                scale_factor,
+                filepaths.get("background_grid", False),
+                filepaths.get("room_grid", True),
+                filepaths.get("hall_grid", True),
+            )
+
         return DunSpec(
-            level_count = spec["level_count"],
+            level_count = spec["floor_count"],
             levels = list(level_specs.values()),
-            textures = {
-                level_specs[level]: paths_to_patterns(
-                    Path(filepaths["background"]).absolute(),
-                    Path(filepaths["room"]).absolute(),
-                    Path(filepaths["hallway"]).absolute(),
-                    Path(filepaths["room_wall"]).absolute(),
-                    Path(filepaths["hall_wall"]).absolute(),
-                    scale_factor,
-                    filepaths.get("background_grid", False),
-                    filepaths.get("room_grid", True),
-                    filepaths.get("hall_grid", True),
-                )
-                for level, filepaths in spec["textures"].items()
-            },
+            textures = textures,
             scale = scale_factor,
             entrances = spec.get("entrances", None),
         )

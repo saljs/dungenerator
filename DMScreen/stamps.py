@@ -73,6 +73,17 @@ class StampRepository:
                 return child_stamp
         return None
 
+    def search_stamps(self, key: str) -> List[Stamp]:
+        """Search for term in all stamp directories, returns a flat list."""
+        def match_stamp_name(s: Stamp) -> bool:
+            if s.name.lower().find(key.lower()) > 0:
+                return True
+            return False
+        stamps = [s for s in self.stamps if match_stamp_name(s)]
+        for sr in self.dirs:
+            stamps += sr.search_stamps(key)
+        return stamps
+
     @classmethod
     def from_path(cls, path: Union[Path|str]) -> "StampRepository":
         path = Path(path).resolve()
@@ -81,8 +92,8 @@ class StampRepository:
             return cls(
                 root = path,
                 path = Path(subdir),
-                dirs = [walk_dirs(d) for d in files if d.is_dir()],
-                stamps = [Stamp.from_file(f, path) for f in files if f.is_file()],
+                dirs = sorted([walk_dirs(d) for d in files if d.is_dir()], key=lambda d: d.path.name),
+                stamps = sorted([Stamp.from_file(f, path) for f in files if f.is_file()], key=lambda f: f.name),
             )
         return walk_dirs(path)
 

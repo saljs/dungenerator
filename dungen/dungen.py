@@ -21,7 +21,7 @@ from .encounter import Encounter
 from .level import Level
 from .level_drawer import LevelDrawer
 from .room_generators import LevelSpec
-from .rooms import Stairs, Room
+from .rooms import Point, Stairs, Room
 
 # individual room drawers
 from .rect_room_drawer import RectRoomDrawer
@@ -89,32 +89,18 @@ def main_func():
     for level_number in progressbar.progressbar(range(1, len(level_specs) + 1)):
         level_spec = level_specs[level_number - 1]
         level_textures = spec.textures[level_spec]
-        if spec.entrances is not None and level_number == 1:
-            level_spec = LevelSpec(
-                name = level_spec.name,
-                width = level_spec.width,
-                height = level_spec.height,
-                floors = level_spec.floors,
-                rooms = level_spec.rooms,
-                room_width = level_spec.room_width,
-                room_height = level_spec.room_height,
-                room_alg = level_spec.room_alg,
-                room_shape = level_spec.room_shape,
-                hall_density = level_spec.hall_density,
-                hall_width = level_spec.hall_width,
-                trap_chance = level_spec.trap_chance,
-                monster_chance = level_spec.monster_chance,
-                shop_chance = level_spec.shop_chance,
-                treasure_chance = level_spec.treasure_chance,
-                stairs_up = Bound(spec.entrances, spec.entrances),
-                stairs_down = level_spec.stairs_down,
-                probability = 0,
-                extra = level_spec.extra,
-            )
-        level = Level(
-            level_spec,
-            [ r.location for r in level.rooms if r.stairs == Stairs.DOWN ] if level else None,
-        )
+        stairs_up = []
+        if level is not None:
+            stairs_up = [ r.location for r in level.rooms if r.stairs == Stairs.DOWN ]
+        else:
+            for _ in range(spec.entrances):
+                stairs_up.append(
+                    Point(
+                        random.randint(0, level_spec.width - level_spec.room_width.upper), 
+                        random.randint(0, level_spec.height - level_spec.room_height.upper), 
+                    )
+                )
+        level = Level(level_spec, stairs_up)
         try:
             drawer = drawer_map[level_spec.room_shape]
         except KeyError:

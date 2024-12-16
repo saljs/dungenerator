@@ -94,9 +94,7 @@ def room_notes(dungeon: str, roomId: str):
         "encounter": d.room_encounters[UUID(roomId)],
     })
 
-@app.route("/api/stamprepo")
-def get_stamps_root():
-    stamps = app.config["STAMP_REPO"]
+def stamp_response(stamps: StampRepository):
     ret = {
         "parent": stamps.parent,
         "stamps": [s.to_dict() for s in stamps.stamps],
@@ -104,18 +102,26 @@ def get_stamps_root():
     }
     return jsonify(ret)
 
+@app.route("/api/stamprepo")
+def get_stamps_root():
+    stamps = app.config["STAMP_REPO"]
+    key = request.args.get("q", None)
+    if key:
+        results = stamps.search_stamps(key)
+        return jsonify({
+            "parent": "",
+            "stamps": [s.to_dict() for s in results],
+            "dirs": [],
+        });
+    return stamp_response(stamps)
+
 @app.route("/api/stamprepo/<path:path>")
 def get_stamps(path):
     stamps = app.config["STAMP_REPO"].get_stamps(path)
     if stamps is None:
         abort(404)
         return None
-    ret = {
-        "parent": stamps.parent,
-        "stamps": [s.to_dict() for s in stamps.stamps],
-        "dirs": [n.relative_path for n in stamps.dirs],
-    }
-    return jsonify(ret)
+    return stamp_response(stamps)
 
 @app.route("/api/save/<dungeon>", methods=["POST"])
 def update_dungeon(dungeon: str):

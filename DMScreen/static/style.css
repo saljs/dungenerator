@@ -108,10 +108,15 @@ body {
 }
 
 #stamp-list {
+    height: 86vh;
     display: none;
     flex-grow: 1;
-    max-height: 100%;
     overflow-y: scroll;
+}
+
+#stamp-list input { 
+    width: 90%;
+    margin-left: 5%;
 }
 
 .stamp {

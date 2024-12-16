@@ -26,7 +26,6 @@ class LevelSpec:
     monster_chance: float
     shop_chance: float
     treasure_chance: float
-    stairs_up: Bound
     stairs_down: Bound
     probability: float
     extra: Dict[str, Any] = field(default_factory=dict, compare=False)
@@ -34,18 +33,12 @@ class LevelSpec:
 
 def UniformRoomFactory(
     spec: LevelSpec,
-    up: Optional[List[Point]] = None,
+    up: List[Point],
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms."""
-    stairs_up = 0
-    stairs_down = 0
-    
-    if up is None:
-        stairs_up = random.randint(spec.stairs_up.lower, spec.stairs_up.upper)
-    else:
-        stairs_up = len(up)
+    stairs_up = len(up)
     stairs_down = random.randint(spec.stairs_down.lower, spec.stairs_down.upper)
-    
+ 
     for _ in range(random.randint(spec.rooms.lower, spec.rooms.upper)):
         is_shop = random.random() < spec.shop_chance
         w = random.randint(spec.room_width.lower, spec.room_width.upper)
@@ -59,8 +52,7 @@ def UniformRoomFactory(
             stairs_up -= 1
             stair = Stairs.UP
             is_shop = False
-            if up is not None:
-                location = up[stairs_up - 1]
+            location = up[stairs_up]
         elif stairs_down > 0:
             stairs_down -= 1
             stair = Stairs.DOWN
@@ -79,7 +71,7 @@ def UniformRoomFactory(
 
 def ClusteredRoomFactory(
     spec: LevelSpec,
-    up: Optional[List[Point]] = None,
+    up: List[Point],
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in connecting clusters."""
     std_mult = spec.extra.get("cluster_std", 2)
@@ -127,7 +119,7 @@ def ClusteredRoomFactory(
 
 def LinearRoomFactory(
     spec: LevelSpec,
-    up: Optional[List[Point]] = None,
+    up: List[Point],
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in linear rows."""
     block_width = spec.extra.get("block_width", 120)
@@ -180,8 +172,7 @@ def LinearRoomFactory(
                     monster_chance = spec.monster_chance,
                     shop_chance = spec.shop_chance,
                     treasure_chance = spec.treasure_chance,
-                    stairs_up = spec.stairs_up,
-                    stairs_down = spec.stairs_down,
+                    stairs_down = Bound(0, 0),
                     probability = spec.probability,
                 ),
                 up = [],
@@ -215,7 +206,7 @@ generator_map = {
 
 def RoomFactory(
     spec: LevelSpec,
-    up: Optional[List[Point]] = None,
+    up: List[Point],
 ) -> Generator[Room, None, None]:
     try:
         return generator_map[spec.room_alg](spec, up)

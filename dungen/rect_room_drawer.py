@@ -52,7 +52,7 @@ class RectRoomDrawer(LevelDrawer):
                     stroke = border,
                     id = f"room-{r.id}" if set_ids else None,
                     class_ = (["room"] + r.tags) if set_ids else None,
-                    stroke_width = scale * 2,
+                    stroke_width = scale,
                     paint_order = "stroke",
                 ),
             ]

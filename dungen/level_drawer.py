@@ -88,7 +88,7 @@ class LevelDrawer(ABC):
                                 level.hallways,
                                 scale,
                                 "url(#hall_wall_pattern)",
-                                hall_width + 2,
+                                hall_width + 1,
                                 Random(rng_seed),
                             ),
                             id = "hall_walls",

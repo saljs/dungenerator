@@ -98,6 +98,7 @@ function selectRoom(id) {
         tb.innerText = info.notes;
         setEncounterItems(info.encounter);
     });
+    window.location.hash = uid;
 }
 
 function deselectRoom() {
@@ -111,6 +112,7 @@ function deselectRoom() {
     });
     document.getElementById("encounter_items").replaceChildren();
     document.getElementById("encounter_link").href = "#";
+    window.location.hash = "";
 }
 
 function toggleStyle(className, btn) {
@@ -253,47 +255,55 @@ function showStamps(path) {
     if (path) {
         apiURL += "/" + path;
     }
-    fetch(apiURL)
-        .then((r) => r.json())
-        .then((sr) => {
-            children = []
-            if (sr.parent !== null) {
-                const parentDir = document.createElement("div");
-                const link = document.createElement("a");
-                parentDir.classList.add("stamp");
-                parentDir.classList.add("stamp-folder");
-                link.onclick = () => showStamps(sr.parent);
-                link.innerText = "up a level";
-                parentDir.appendChild(link);
-                children.push(parentDir);
-            }
-            stamp_list.replaceChildren(...children.concat(
-                sr.dirs.map((dir) => {
-                    const dirEl = document.createElement("div");
-                    const link = document.createElement("a");
-                    link.onclick = () => showStamps(dir);
-                    link.innerText = dir;
-                    dirEl.appendChild(link);
-                    dirEl.classList.add("stamp");
-                    dirEl.classList.add("stamp-folder");
-                    return dirEl;
-                }),
-                sr.stamps.map((stamp) => {
-                    const dirEl = document.createElement("div");
-                    const link = document.createElement("a");
-                    const img = document.createElement("img");
-                    link.innerText = stamp.name;
-                    link.dataset.width = stamp.width;
-                    link.dataset.height = stamp.height;
-                    link.onclick = () => selectStamp(stamp);
-                    img.src = "/stamps/" + stamp.href;
-                    link.appendChild(img);
-                    dirEl.appendChild(link);
-                    dirEl.classList.add("stamp");
-                    return dirEl;
-                })
-            ));
+    const stampDisplayHandler = (sr) =>{
+        const children = [
+            document.createElement("input"),
+        ];
+        children[0].type = "text";
+        children[0].placeholder = "search for stamp";
+        children[0].addEventListener("change", (sb) => {
+            fetch("/api/stamprepo?q=" + sb.target.value)
+                .then((r) => r.json()).then(stampDisplayHandler);
         });
+        if (sr.parent !== null) {
+            const parentDir = document.createElement("div");
+            const link = document.createElement("a");
+            parentDir.classList.add("stamp");
+            parentDir.classList.add("stamp-folder");
+            link.onclick = () => showStamps(sr.parent);
+            link.innerText = "up a level";
+            parentDir.appendChild(link);
+            children.push(parentDir);
+        }
+        stamp_list.replaceChildren(...children.concat(
+            sr.dirs.map((dir) => {
+                const dirEl = document.createElement("div");
+                const link = document.createElement("a");
+                link.onclick = () => showStamps(dir);
+                link.innerText = dir;
+                dirEl.appendChild(link);
+                dirEl.classList.add("stamp");
+                dirEl.classList.add("stamp-folder");
+                return dirEl;
+            }),
+            sr.stamps.map((stamp) => {
+                const dirEl = document.createElement("div");
+                const link = document.createElement("a");
+                const img = document.createElement("img");
+                link.innerText = stamp.name;
+                link.dataset.width = stamp.width;
+                link.dataset.height = stamp.height;
+                link.onclick = () => selectStamp(stamp);
+                img.src = "/stamps/" + stamp.href;
+                img.setAttribute("loading", "lazy");
+                link.appendChild(img);
+                dirEl.appendChild(link);
+                dirEl.classList.add("stamp");
+                return dirEl;
+            })
+        ));
+    }
+    fetch(apiURL).then((r) => r.json()).then(stampDisplayHandler);
 
     const tb = syncRoomText();
     tb.parentElement.style.display = "none";
@@ -336,10 +346,12 @@ document.addEventListener("DOMContentLoaded", function() {
             if (prev_stamp) {
                 prev_stamp.remove();
             }
+            removeStylefromSVG("img-no-interaction");
         }
         else {
             ev.srcElement.classList.add("selected");
             showStamps("");
+            addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
         }
     };
     document.addEventListener("keydown", (ev) => {
@@ -354,10 +366,10 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         };
     });
-    const stampMoveHandler = (x, y, ev) => {
-        moveStamp(x, y);
+    const stampMoveHandler = (ev) => {
+        moveStamp(ev.layerX, ev.layerY);
     };
-    const stampPlaceHandler = (x, y, ev) => {
+    const stampPlaceHandler = (ev) => {
         ev.preventDefault();
         dropStamp();
     };
@@ -376,6 +388,16 @@ document.addEventListener("DOMContentLoaded", function() {
         addEncounter(data.entries());
     });
 
+    // Add hanlder for map view button
+    document.getElementById("view_map_btn").onclick = () => {
+        let map_view_url = "/" + document.querySelector("body").dataset.dungeon
+            + "/map/" + document.querySelector(".map").dataset.lvid;
+        const tb = document.getElementById("room_info");
+        if ("currentRoom" in tb.dataset) {
+            map_view_url += "#" + tb.dataset.currentRoom;
+        }
+        window.open(map_view_url, "_blank").focus();
+    }
 
     // Add handlers for save
     const save_btn = document.getElementById("save_btn");
@@ -391,4 +413,9 @@ document.addEventListener("DOMContentLoaded", function() {
         e.preventDefault();
         return false;
     });
+
+    // Check if there is a room selected in the URL
+    if (window.location.hash) {
+        selectRoom("room-" + window.location.hash.slice(1));
+    }
 });

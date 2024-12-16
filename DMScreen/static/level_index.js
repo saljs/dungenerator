@@ -15,6 +15,8 @@ function selectLevel(lvid) {
     document.getElementById("edit_lvl_btn").href = "/"
         + document.querySelector("body").dataset.dungeon
         + "/level/" + lvid;
+
+    window.location.hash = lvid;    
 }
 
 function saveLevels() {
@@ -43,7 +45,12 @@ function saveLevels() {
 
 document.addEventListener("DOMContentLoaded", function() {
     // Select the first level to being
-    selectLevel(1);
+    if (window.location.hash) {
+        selectLevel(parseInt(window.location.hash.slice(1)));
+    }
+    else {
+        selectLevel(1);
+    }
 
     // Add click handler to level buttons
     document.querySelectorAll(".choose_lvl_btn").forEach((btn) => {
