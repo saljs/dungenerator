@@ -12,12 +12,13 @@ class Level:
         self,
         spec: LevelSpec,
         up: List[Point],
+        towers: bool,
     ):
         self.width = spec.width
         self.height = spec.height
 
         # Create rooms and hallways
-        self.rooms = tuple(RoomFactory(spec, up))
+        self.rooms = tuple(RoomFactory(spec, up, towers))
         self.hallways = Connections(self.rooms)
         self.hallways.prune(spec.hall_density)
     

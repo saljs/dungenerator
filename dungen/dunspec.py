@@ -71,6 +71,7 @@ class DunSpec:
                 shop_chance = level["shop_chance"],
                 treasure_chance = level["treasure_chance"],
                 stairs_down = dict_to_bound(level["stairs_down"]),
+                towers = level.get("towers", False),
                 probability = level["probability"],
                 extra = level.get("extra", {}),
             )

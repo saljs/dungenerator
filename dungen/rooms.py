@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Flag, auto
 from typing import List, Union
 from uuid import UUID
 
-
-class Stairs(Enum):
-    NONE = 0
-    UP = 1
-    DOWN = 2
+class Stairs(Flag):
+    NONE = auto()
+    UP = auto()
+    DOWN = auto()
 
 @dataclass(frozen=True)
 class Point:
@@ -39,8 +38,8 @@ class Room:
             tags.append("trap")
         if self.shop:
             tags.append("shop")
-        if self.stairs == Stairs.UP:
+        if Stairs.UP in self.stairs:
             tags.append("up")
-        elif self.stairs == Stairs.DOWN:
+        if Stairs.DOWN in self.stairs:
             tags.append("down")
         return tags

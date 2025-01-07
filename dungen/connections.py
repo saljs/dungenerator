@@ -60,6 +60,8 @@ class Connections:
 
     def prune(self, density: float = 0.2):
         """Prunes the numbers of hallways between rooms"""
+        if len(self._rooms) < 2:
+            return
         mst_rooms: Set[Room] = { self._rooms[0] } # type: ignore[index]
         mst_edges: Set[Hallway] = set()
         adj_list = sorted(self._hallways)

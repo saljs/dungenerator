@@ -1,6 +1,6 @@
 import random
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Dict, List, Optional, Union, Generator
 from uuid import uuid4
 
@@ -27,19 +27,28 @@ class LevelSpec:
     shop_chance: float
     treasure_chance: float
     stairs_down: Bound
+    towers: bool
     probability: float
     extra: Dict[str, Any] = field(default_factory=dict, compare=False)
+
+    def updated(self, **kwargs) -> "LevelSpec":
+        """Returns a copy of the spec with fields in kwargs set to corresponding values."""
+        curr = { f.name: getattr(self, f.name) for f in fields(self) }
+        return LevelSpec(**(curr | kwargs))
 
 
 def UniformRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms."""
     stairs_up = len(up)
     stairs_down = random.randint(spec.stairs_down.lower, spec.stairs_down.upper)
+    if use_towers:
+        stairs_down = max(0, stairs_down - stairs_up)
  
-    for _ in range(random.randint(spec.rooms.lower, spec.rooms.upper)):
+    for _ in range(max(random.randint(spec.rooms.lower, spec.rooms.upper), stairs_up + stairs_down)):
         is_shop = random.random() < spec.shop_chance
         w = random.randint(spec.room_width.lower, spec.room_width.upper)
         h = random.randint(spec.room_height.lower, spec.room_height.upper)
@@ -57,6 +66,8 @@ def UniformRoomFactory(
             stairs_down -= 1
             stair = Stairs.DOWN
             is_shop = False
+        if use_towers:
+            stair |= Stairs.DOWN
         yield Room(
             id = uuid4(),
             location = location,
@@ -72,11 +83,12 @@ def UniformRoomFactory(
 def ClusteredRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in connecting clusters."""
     std_mult = spec.extra.get("cluster_std", 2)
     start_count = spec.extra.get("cluster_starts", 5)
-    uniform_gen = UniformRoomFactory(spec, up)
+    uniform_gen = UniformRoomFactory(spec, up, use_towers)
     start_rooms: List[Room] = []
     while room := next(uniform_gen, None):
         if room.stairs == Stairs.NONE and len(start_rooms) >= start_count:
@@ -113,13 +125,14 @@ def ClusteredRoomFactory(
                 monsters = False if is_shop else random.random() < spec.monster_chance,
                 treasure = False if is_shop else random.random() < spec.treasure_chance,
                 trap = False if is_shop else random.random() < spec.trap_chance,
-                stairs = Stairs.NONE
+                stairs = Stairs.DOWN if use_towers else Stairs.NONE,
             )
             yield curr
 
 def LinearRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in linear rows."""
     block_width = spec.extra.get("block_width", 120)
@@ -132,14 +145,16 @@ def LinearRoomFactory(
     )
 
     # Get starting rooms
-    uniform_gen = UniformRoomFactory(spec, up)
+    uniform_gen = UniformRoomFactory(spec, up, use_towers)
     room_count = 0
     while room := next(uniform_gen, None):
-        if room.stairs == Stairs.NONE:
+        if room.stairs == Stairs.NONE or (use_towers and room_count < spec.rooms.lower):
             break
         room_count += 1
         yield room
     
+    if spec.rooms.upper == 0:
+        return
     total_rooms = random.randint(spec.rooms.lower, spec.rooms.upper - room_count)
     rooms_in_block = Bound(
         lower = int(total_rooms / block_count.upper),
@@ -156,26 +171,15 @@ def LinearRoomFactory(
                 curr_x += block_width + random.randint(spec.room_width.lower, spec.room_width.upper)
                 continue
             rf = UniformRoomFactory(
-                LevelSpec(
-                    name = spec.name,
+                spec.updated(
                     width = block_width,
                     height = block_height,
-                    floors = spec.floors,
                     rooms = rooms_in_block,
-                    room_width = spec.room_width,
-                    room_height = spec.room_height,
                     room_alg = "uniform",
-                    room_shape = spec.room_shape,
-                    hall_density = spec.hall_density,
-                    hall_width = spec.hall_width,
-                    trap_chance = spec.trap_chance,
-                    monster_chance = spec.monster_chance,
-                    shop_chance = spec.shop_chance,
-                    treasure_chance = spec.treasure_chance,
                     stairs_down = Bound(0, 0),
-                    probability = spec.probability,
                 ),
                 up = [],
+                use_towers = use_towers,
             )
 
             while room := next(rf, None):
@@ -191,7 +195,7 @@ def LinearRoomFactory(
                     treasure = room.treasure,
                     trap = room.trap,
                     shop = room.shop,
-                    stairs = Stairs.NONE,
+                    stairs = room.stairs,
                 )
             curr_x += block_width + random.randint(spec.room_width.lower, spec.room_width.upper)
         curr_y += block_height + random.randint(spec.room_height.lower, spec.room_height.upper)
@@ -207,8 +211,9 @@ generator_map = {
 def RoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     try:
-        return generator_map[spec.room_alg](spec, up)
+        return generator_map[spec.room_alg](spec, up, use_towers)
     except KeyError:
         raise Exception(f"{spec.room_alg} is not a recognized room creation algorithm.")

@@ -19,17 +19,19 @@ from .dunspec import DunSpec
 from .connections import Bound
 from .encounter import Encounter
 from .level import Level
-from .level_drawer import LevelDrawer
+from .level_drawer import LevelDrawer, FillPatterns, handle_no_floors
 from .room_generators import LevelSpec
 from .rooms import Point, Stairs, Room
 
 # individual room drawers
 from .rect_room_drawer import RectRoomDrawer
+from .mixed_room_drawer import MixedRoomDrawer
 from .organic_room_drawer import OrganicRoomDrawer
 
 # Map of shapes to drawers
 drawer_map: Dict[str, LevelDrawer] = {
     "rect": cast(LevelDrawer, RectRoomDrawer()),
+    "mixed": cast(LevelDrawer, MixedRoomDrawer()),
     "organic": cast(LevelDrawer, OrganicRoomDrawer()),
 }
 
@@ -38,8 +40,8 @@ drawer_map: Dict[str, LevelDrawer] = {
 class DungenSave:
     """The savefile definition."""
     scale: int = 1
-    levels: Dict[int, Tuple[Room, ...]] = field(default_factory=dict)
-    images: Dict[int, svg.SVG] = field(default_factory=dict)
+    levels: Dict[int, Dict[int, Tuple[Room, ...]]] = field(default_factory=dict)
+    images: Dict[int, Dict[int, svg.SVG]] = field(default_factory=dict)
     room_notes: Dict[UUID, str] = field(default_factory=dict)
     room_encounters: Dict[UUID, Encounter] = field(default_factory=dict)
     level_notes: Dict[int, str] = field(default_factory=dict)
@@ -56,6 +58,69 @@ class DungenSave:
             path = Path(path)
         with path.open("rb") as to_load:
             return pickle.load(to_load)
+
+
+def create_level(
+    spec: LevelSpec,
+    entrances: List[Point],
+    level_textures: FillPatterns,
+    level_number: int,
+    savefile: DungenSave,
+    bottom_level: bool,
+):
+    """Creates a level from a spec."""
+    rooms = []
+    imgs = []
+    stairs_up = entrances
+    num_floors = random.randint(spec.floors.lower, spec.floors.upper)
+    for floor_number in range(num_floors):
+        stairs_bound = spec.stairs_down
+        rooms_bound = spec.rooms
+        if bottom_level and floor_number == num_floors - 1:
+            # last level
+            stairs_bound = Bound(0, 0)
+        elif spec.towers:
+            # if making towers, reduce number of rooms
+            print(floor_number / (num_floors - 1))
+            rooms_bound = Bound(0, int(spec.rooms.upper * (floor_number / (num_floors - 1))))
+        
+        level = Level(
+            spec.updated(rooms = rooms_bound, stairs_down = stairs_bound),
+            stairs_up,
+            towers = spec.towers and floor_number < num_floors - 1,
+        )
+        stairs_up = [r.location for r in level.rooms if Stairs.DOWN in r.stairs]
+            
+        try:
+            drawer = drawer_map[spec.room_shape]
+        except KeyError:
+            raise Exception(f"{spec.room_shape} is not a recognized room shape.")
+        rooms.append(level.rooms)
+        imgs.append(drawer.draw_level(
+            level,
+            level_textures,
+            scale = savefile.scale,
+            hall_width = spec.hall_width,
+            walls_in_fg = spec.extra.get("walls_in_fg", False),
+        ))
+        savefile.room_notes.update({
+            r.id: f"Room {i+1}:\n"
+                + f"{'There are stairs up here.\n' if Stairs.UP in r.stairs else ''}"
+                + f"{'There are stairs down here.\n' if Stairs.DOWN in r.stairs else ''}"
+                + f"{'This room is a shop.\n' if r.shop else ''}"
+                + f"{'This room contains monsters.\n' if r.monsters else ''}"
+                + f"{'This room contains treasure.\n' if r.treasure else ''}"
+                + f"{'There is a trap here.\n' if r.trap else ''}"
+            for i, r in enumerate(level.rooms)
+        })
+        savefile.room_encounters.update({ r.id: Encounter() for r in level.rooms })
+
+    if "no_floors" in spec.extra:
+        handle_no_floors(imgs, savefile.scale, **spec.extra["no_floors"])
+
+    savefile.level_notes[level_number] = f"Level {level_number}: {spec.name}i\nThis level contains {floor_number + 1} floors."
+    savefile.levels[level_number] = {i + 1: rm for i, rm in enumerate(rooms)}
+    savefile.images[level_number] = {i + 1: img for i, img in enumerate(imgs)}
 
 
 def main_func():
@@ -80,19 +145,10 @@ def main_func():
     spec = DunSpec.from_yaml(args.spec)
 
     savefile = DungenSave(scale = spec.scale)
-    level:Optional[Level] = None
-    level_specs: List[LevelSpec] = []
-    for _ in range(spec.level_count):
+    for i in progressbar.progressbar(range(1, spec.level_count + 1)):
         level_spec, = random.choices(spec.levels, weights=[ls.probability for ls in spec.levels])
-        level_specs += [level_spec] * random.randint(level_spec.floors.lower, level_spec.floors.upper)
-
-    for level_number in progressbar.progressbar(range(1, len(level_specs) + 1)):
-        level_spec = level_specs[level_number - 1]
-        level_textures = spec.textures[level_spec]
         stairs_up = []
-        if level is not None:
-            stairs_up = [ r.location for r in level.rooms if r.stairs == Stairs.DOWN ]
-        else:
+        if i == 1:
             for _ in range(spec.entrances):
                 stairs_up.append(
                     Point(
@@ -100,36 +156,28 @@ def main_func():
                         random.randint(0, level_spec.height - level_spec.room_height.upper), 
                     )
                 )
-        level = Level(level_spec, stairs_up)
-        try:
-            drawer = drawer_map[level_spec.room_shape]
-        except KeyError:
-            raise Exception(f"{level_spec.room_shape} is not a recognized room shape.")
-        savefile.levels[level_number] = level.rooms
-        savefile.images[level_number] = drawer.draw_level(
-            level,
-            level_textures,
-            scale = spec.scale,
-            hall_width = level_spec.hall_width,
+        else:
+            stairs_up = [ 
+                r.location for r in savefile.levels[i - 1][len(savefile.levels[i - 1])] if r.stairs == Stairs.DOWN
+            ]
+
+        create_level(
+            level_spec,
+            stairs_up,
+            spec.textures[level_spec],
+            i,
+            savefile,
+            i == spec.level_count,
         )
-        savefile.room_notes.update({
-            r.id: f"Room {i+1}:\n"
-                + f"{'There are stairs up here.\n' if r.stairs == Stairs.UP else ''}"
-                + f"{'There are stairs down here.\n' if r.stairs == Stairs.DOWN else ''}"
-                + f"{'This room is a shop.\n' if r.shop else ''}"
-                + f"{'This room contains monsters.\n' if r.monsters else ''}"
-                + f"{'This room contains treasure.\n' if r.treasure else ''}"
-                + f"{'There is a trap here.\n' if r.trap else ''}"
-            for i, r in enumerate(level.rooms)
-        })
-        savefile.room_encounters.update({ r.id: Encounter() for r in level.rooms })
-        savefile.level_notes[level_number] = f"Level {level_number}: {level_spec.name}"
 
         if args.svg_out is not None:
             args.svg_out.mkdir(exist_ok = True)
-            svg_path = args.svg_out.joinpath(f"level_{level_number}.svg")
-            svg_path.write_text(str(savefile.images[level_number]))
-    
+            level_dir = args.svg_out.joinpath(f"level_{i}")
+            level_dir.mkdir(exist_ok = True)
+            for j, img in enumerate(savefile.images[i]):
+                svg_path = level_dir.joinpath(f"floor_{j + 1}.svg")
+                svg_path.write_text(str(img))
+
     with args.savefile.open("wb") as out:
         out.write(pickle.dumps(savefile))
 
