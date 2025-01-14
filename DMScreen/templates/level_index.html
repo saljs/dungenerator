@@ -9,17 +9,23 @@
     <body class="container" data-dungeon="{{ dungen_name }}">
         <div class="buttons container cols">
         {% for lvid in dungeon.levels %}
-            <a class="choose_lvl_btn" data-lvid="{{ lvid }}">Level {{ lvid }}</a>
+            <a class="choose_lvl_btn" data-lvid="{{ lvid }}">
+                Level {{ lvid }}
+            </a>
         {% endfor %}
         </div>
         <div class="container cols stretch">
             <div class="notes stretch">
             {% for lvid in dungeon.levels %}
-                <textarea spellcheck="true" data-lvid="{{ lvid }}">{{ dungeon.level_notes[lvid] }}</textarea>
+                <textarea spellcheck="true" 
+                    data-lvid="{{ lvid }}"
+                    data-floors="{{ len(dungeon.levels[lvid]) }}"
+                >{{ dungeon.level_notes[lvid] }}</textarea>
             {% endfor %}
             </div>
             <div class="buttons container">
-                <a id="edit_lvl_btn">Select level</a>
+                <select id="floor_selection"></select>
+                <a id="edit_lvl_btn">Edit floor</a>
                 <a class="success" id="save_btn">Save</a>
             </div>
         </div>

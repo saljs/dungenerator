@@ -20,10 +20,30 @@ function set_light_mask(maskEl, x, y, width, height, scale) {
     }
 }
 
+function toggle_shadows(svg) {
+    const fg = svg.querySelector("#fg-elements");
+    if (fg.getAttribute("filter")) {
+        fg.setAttributeNS(null, "filter", "");
+    }
+    else {
+        fg.setAttributeNS(null, "filter", "url(#shadow)");
+    }
+}
+
+function update_url_hash(svg) {
+    const svgEl = d3.zoomTransform(svg);
+    const zoomProps = {
+        "x": svgEl.x,
+        "y": svgEl.y,
+        "k": svgEl.k,
+    };
+    window.location.hash = JSON.stringify(zoomProps);
+}
+
 document.addEventListener("DOMContentLoaded", function() {
-    // Add in initial mask
     const svg = document.querySelector(".map svg");
     const defs = svg.querySelector("defs");
+    // Add in initial mask
     const grad = document.createElementNS(svg.namespaceURI, "radialGradient");
     grad.setAttributeNS(null, "id", "light-gradient");
     grad.innerHTML = `
@@ -40,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <rect
             fill="black"
             x=0 y=0
-            width="${svgWidth}" height="${svgHeight}"
+            width="120%" height="120%"
         />
         <rect
             id="light-mask-rect"
@@ -50,14 +70,25 @@ document.addEventListener("DOMContentLoaded", function() {
         />`;
     defs.appendChild(mask);
     svg.querySelector("g").setAttributeNS(null, "mask", "url(#light-mask)");
-
+    // Add in shadow filter
+    const scale = parseInt(document.querySelector(".map").dataset.scale);
+    const shadow = document.createElementNS(svg.namespaceURI, "filter");
+    shadow.setAttributeNS(null, "id", "shadow");
+    shadow.innerHTML = `
+      <feFlood flood-color="black"/>
+      <feComposite operator="out" in2="SourceGraphic"/>
+      <feGaussianBlur stdDeviation="${scale / 4}"/>
+      <feOffset dx="${scale / 10}" dy="${scale / 10}" result="drop-shadow"/>
+      <feComposite operator="atop" in2="SourceGraphic"/>`;
+    defs.appendChild(shadow);
+                        
     // Add in click-to-drag handler
     const light = document.getElementById("light-mask-rect");
     const lightHandler = (x, y) => {
         set_light_mask(
             light,
             x, y, svgWidth, svgHeight,
-            parseInt(document.querySelector(".map").dataset.scale),
+            scale,
         );
     };
     const svg_view = new SVGView(null,
@@ -74,6 +105,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Only move light if shift key is held
                 lightHandler(ev.layerX, ev.layerY);
             }
+            update_url_hash(svg_view.svg);
         });
 
     // Add in keyboard actions
@@ -81,17 +113,27 @@ document.addEventListener("DOMContentLoaded", function() {
         if (ev.key === 'z') {
             svg_view.zoomToExtents();
         }
+        else if (ev.key === 's') {
+            toggle_shadows(svg);
+        }
+        else if (ev.key === 'k') {
+            if ("floor_up" in svg_view.map.dataset) {
+                update_url_hash(svg_view.svg);
+                window.location = svg_view.map.dataset.floor_up
+                    + window.location.hash;
+            }
+        }
+        else if (ev.key === 'j') {
+            if ("floor_down" in svg_view.map.dataset) {
+                window.location = svg_view.map.dataset.floor_down
+                    + window.location.hash;
+            }
+        }
     });
 
-    // Check if we need to zoom to a room
     if (window.location.hash) {
-        const room = document.getElementById("room-" + window.location.hash.slice(1));
-        if (room) {
-            svg_view.zoomTo(
-                room.x.animVal.value,
-                room.y.animVal.value,
-                room.width.animVal.value,
-            );
-        }
+        const hashVal = decodeURIComponent(window.location.hash.slice(1));
+        const zoomProps = JSON.parse(hashVal);
+        svg_view.zoomTo(zoomProps["x"], zoomProps["y"], zoomProps["k"]);
     }
 });

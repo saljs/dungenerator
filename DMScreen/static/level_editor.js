@@ -1,13 +1,12 @@
 const svgStyles = {
-    "highlight_monsters": ".monsters { stroke: magenta; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_traps": ".trap { stroke: yellow; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_shops": ".shop { stroke: orange; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_treasure": ".treasure { stroke: chartreuse; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_stairs_up": ".up { stroke: royalblue; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_stairs_down": ".down { stroke: coral; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_monsters": "#rooms .monsters { stroke: magenta; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_traps": "#rooms .trap { stroke: yellow; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_shops": "#rooms .shop { stroke: orange; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_treasure": "#rooms .treasure { stroke: chartreuse; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_stairs_up": "#rooms .up { stroke: royalblue; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_stairs_down": "#rooms .down { stroke: coral; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
 };
 const cachedInfo = {};
-const encounter_endpoint = window.location.href.replace("level", "encounter");
 
 function addStyletoSVG(id, style) {
     const svg = document.querySelector(".map svg");
@@ -130,13 +129,14 @@ function toggleStyle(className, btn) {
 
 function saveRooms() {
     syncRoomText();
+    const jsonBody = JSON.stringify(cachedInfo);
     fetch("/api/save/" + document.querySelector("body").dataset.dungeon + "/rooms", {
         method: "POST",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(cachedInfo),
+        body: jsonBody,
     });
 }
 
@@ -222,6 +222,7 @@ function selectStamp(stamp) {
 function saveStamps() {
     const stamps = document.getElementById("stamps");
     const lvid = parseInt(document.querySelector(".map").dataset.lvid);
+    const floorid = parseInt(document.querySelector(".map").dataset.floorid);
     const objs = [];
     stamps.childNodes.forEach((el) => {
         const angle = getStampAngle(el);
@@ -244,6 +245,7 @@ function saveStamps() {
         },
         body: JSON.stringify({
             "lvid": lvid,
+            "floorid": floorid,
             "stamps": objs,
         }),
     });
@@ -315,7 +317,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".map .room").forEach((rm) => {
         rm.onclick = () => { selectRoom(rm.id); };
     });
-    document.getElementById("background").onclick = deselectRoom;
+    document.getElementById("bg-elements").onclick = deselectRoom;
     document.querySelectorAll(".map .hall").forEach((hall) => {
         hall.onclick = deselectRoom;
     });
@@ -390,12 +392,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Add hanlder for map view button
     document.getElementById("view_map_btn").onclick = () => {
+        const svgEl = d3.zoomTransform(svg.svg);
+        const zoomProps = {
+            "x": svgEl.x,
+            "y": svgEl.y,
+            "k": svgEl.k,
+        };
         let map_view_url = "/" + document.querySelector("body").dataset.dungeon
-            + "/map/" + document.querySelector(".map").dataset.lvid;
-        const tb = document.getElementById("room_info");
-        if ("currentRoom" in tb.dataset) {
-            map_view_url += "#" + tb.dataset.currentRoom;
-        }
+            + "/map/" + document.querySelector(".map").dataset.lvid + "/"
+            + document.querySelector(".map").dataset.floorid
+            + "#" + JSON.stringify(zoomProps);
         window.open(map_view_url, "_blank").focus();
     }
 

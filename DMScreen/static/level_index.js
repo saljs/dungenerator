@@ -11,11 +11,27 @@ function selectLevel(lvid) {
     document.querySelector(".choose_lvl_btn[data-lvid='" + lvid + "']")
         .classList.add("selected");
 
+    // Set options for floors
+    const floor_opts = document.getElementById("floor_selection");
+    const floors = parseInt(
+        document.querySelector(".notes textarea[data-lvid='" + lvid + "']")
+            .dataset.floors
+    );
+    floor_opts.replaceChildren(
+        ...Array.from({length: floors}, (v, k) => k+1)
+            .map((floorid) => {
+                const opt = document.createElement("option");
+                opt.value = floorid;
+                opt.innerText = `Floor ${floorid}`;
+                return opt;
+            })
+    );
     // Set correct level URL
-    document.getElementById("edit_lvl_btn").href = "/"
-        + document.querySelector("body").dataset.dungeon
-        + "/level/" + lvid;
-
+    document.getElementById("edit_lvl_btn").onclick = () => {
+        window.location = "/"
+            + document.querySelector("body").dataset.dungeon
+            + "/level/" + lvid + "/" + floor_opts.value;
+    };
     window.location.hash = lvid;    
 }
 

@@ -27,10 +27,11 @@ def level_index(dungeon: str):
         "level_index.html",
         dungen_name = dungeon,
         dungeon = d,
+        len = len,
     )
 
-@app.route("/<dungeon>/level/<int:lvid>")
-def level_screen(dungeon: str, lvid: int):
+@app.route("/<dungeon>/level/<int:lvid>/<int:floorid>")
+def level_screen(dungeon: str, lvid: int, floorid: int):
     d = app.config["DUNGEONS"].get(dungeon)
     if d is None:
         abort(404)
@@ -39,6 +40,7 @@ def level_screen(dungeon: str, lvid: int):
         dungeon = d,
         dungen_name = dungeon,
         lvid = lvid,
+        floorid = floorid,
     )
 
 @app.route("/<dungeon>/encounter/<roomId>")
@@ -57,24 +59,32 @@ def encounter_screen(dungeon: str, roomId: str):
         createBookLink = book_link,
     )
 
-@app.route("/<dungeon>/map/<int:lvid>")
-def map_screen(dungeon: str, lvid: int):
+@app.route("/<dungeon>/map/<int:lvid>/<int:floorid>")
+def map_screen(dungeon: str, lvid: int, floorid: int):
     d = app.config["DUNGEONS"].get(dungeon)
     if d is None:
         abort(404)
     return render_template(
         "map_screen.html",
         lvid = lvid,
+        floorid = floorid,
         dungen_name = dungeon,
         dungeon = d,
     )
 
-@app.route("/<dungeon>/export/<int:lvid>")
-def map_export(dungeon: str, lvid: int):
+@app.route("/<dungeon>/export/<int:lvid>/<int:floorid>")
+def map_export(dungeon: str, lvid: int, floorid: int):
     d = app.config["DUNGEONS"].get(dungeon)
     if d is None:
         abort(404)
-    return Response(render_as_map(d.images[lvid]), mimetype="image/svg+xml")
+    return Response(render_as_map(d.images[lvid][floorid], d.scale), mimetype="image/svg+xml")
+
+@app.route("/svg/<dungeon>/<int:lvid>/<int:floorid>")
+def raw_svg(dungeon: str, lvid: int, floorid: int):
+    d = app.config["DUNGEONS"].get(dungeon)
+    if d is None:
+        abort(404)
+    return Response(str(d.images[lvid][floorid]), mimetype="image/svg+xml")
 
 @app.route("/stamps/<path:path>")
 def get_stamp(path):
@@ -159,8 +169,9 @@ def update_stamps(dungeon: str):
     if d is None:
         abort(404)
     lvid = request.json.get("lvid")
+    floorid = request.json.get("floorid")
     stamps = [StampInfo(**s) for s in request.json.get("stamps", [])]
-    set_stamps(stamps, d.images[lvid])
+    set_stamps(stamps, d.images[lvid][floorid])
     if app.config["DUNGEONS"].save(dungeon):
         return "OK"
     abort(500);

@@ -2,44 +2,46 @@ import copy
 import svg
 
 from typing import List
+from dungen import find_element, append_children, remove_children
 
+def render_as_map(orig_map: svg.SVG, scale: int) -> str:
+    fg_filter = svg.Filter(
+        id = "fg-filter",
+        elements = [
+            svg.FeColorMatrix(
+                in_ = "SourceGraphic",
+                type = "matrix",
+                values = "0 0 1 0 0\n0 0 1 0 0\n0 0 1 0 0\n0 0 0 1 0",
+                result = "black_and_white",
+            ),
+            svg.FeTurbulence(
+                baseFrequency = "0.001",
+                numOctaves = 2,
+                type = "turbulence",
+                result = "turbulence",
+            ),
+            svg.FeDisplacementMap(
+                in2 = "turbulence",
+                in_ = "black_and_white",
+                scale = str(scale),
+                xChannelSelector = "R",
+                yChannelSelector = "G",
+                result = "pencil",
+            ),
+        ],
+    )
 
-MAP_EXPORT_BG = svg.Rect(x = 0, y = 0, width = 200, height = 200, fill = "white")
-MAP_EXPORT_LINES = "/static/map_pattern.svg"
-
-def find_node(elements: List[svg.Element], node_id: str) -> svg.Element:
-    """Returns a node with the given id from a list of nodes."""
-    node, = [el for el in elements if el.id == node_id]
-    return node
-
-def render_as_map(orig_map: svg.SVG) -> str:
     map_copy = copy.deepcopy(orig_map)
-    if (
-        map_copy.elements is None
-        or len(map_copy.elements) < 1
-        or map_copy.elements[0].elements is None
-    ):
-        raise AttributeError("Missing defs element in SVG.")
-    defs = map_copy.elements[0].elements
+    map_copy.viewBox = svg.ViewBoxSpec(0, 0, map_copy.width, map_copy.height) # type: ignore[arg-type]
+    map_copy.width = None
+    map_copy.height = None
+    
+    remove_children(map_copy, "bg-elements")
+    remove_children(map_copy, "stamps")
 
-    bg_pattern = find_node(defs, "background_pattern")
-    room_pattern = find_node(defs, "room_pattern")
-    hallway_pattern = find_node(defs, "hallway_pattern")
-    room_wall_pattern = find_node(defs, "room_wall_pattern")
-    hall_wall_pattern = find_node(defs, "hall_wall_pattern")
-
-    def set_img_href(pattern, href):
-        if (
-            len(pattern.elements) < 1
-            or not isinstance(pattern.elements[0], svg.Image)
-        ):
-            raise AttributeError("SVG pattern missing image element.")
-        pattern.elements[0].href = href
-
-    bg_pattern.elements = [ MAP_EXPORT_BG ]
-    room_pattern.elements = [ MAP_EXPORT_BG ]
-    hallway_pattern.elements = [ MAP_EXPORT_BG ]
-    set_img_href(room_wall_pattern, MAP_EXPORT_LINES)
-    set_img_href(hall_wall_pattern, MAP_EXPORT_LINES)
+    fg_el = find_element(map_copy, "fg-elements")
+    if fg_el is not None and isinstance(fg_el, svg.G):
+        append_children(map_copy, "defs", [fg_filter])
+        fg_el.filter = "url(#fg-filter)"
 
     return str(map_copy)

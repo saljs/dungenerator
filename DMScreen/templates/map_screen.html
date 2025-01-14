@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-        <title>Map: Level {{ lvid }}</title>
+        <title>Map: Level {{ lvid }} - floor {{ floorid }}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.2.0/d3.min.js"></script>
         <script src="/static/svg_view.js"></script>
         <script src="/static/map_viewer.js"></script>
@@ -17,8 +17,16 @@
         </style>
     </head>
     <body class="container">
-        <div class="map" data-scale="{{ dungeon.scale }}">
-            {{ dungeon.images[lvid] | safe }}
+        <div class="map" 
+             data-scale="{{ dungeon.scale }}"
+            {% if floorid - 1 in dungeon.levels[lvid] %}
+             data-floor_up="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid - 1 }}"
+            {% endif %}
+            {% if floorid + 1 in dungeon.levels[lvid] %}
+             data-floor_down="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid + 1 }}"
+            {% endif %}
+        >
+            {{ dungeon.images[lvid][floorid] | safe }}
         </div>
     </body>
 </html>

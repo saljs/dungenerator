@@ -20,13 +20,13 @@ class SVGView {
     }
         
     zoomToExtents() {
-        this.zoomTo(0, 0, this.svg.clientWidth);
+        this.zoomTo(0, 0, this.map.clientWidth / this.svg.clientWidth);
     }
 
-    zoomTo(x, y, width) {
-        this.svg.scale = this.map.clientWidth / width;
+    zoomTo(x, y, k) {
+        this.svg.scale = k;
         const d3map = d3.select("svg");
         d3map.call(this.zoom.scaleTo, this.svg.scale, [0, 0]);
-        d3map.call(this.zoom.translateTo, x, y, [0, 0]);
+        d3map.call(this.zoom.translateTo, 0, 0, [x, y]);
     }
 }

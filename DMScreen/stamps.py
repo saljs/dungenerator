@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+from dungen import append_children, remove_children
+
 @dataclass
 class Stamp:
     width: int
@@ -115,17 +117,14 @@ class StampInfo:
         return [ svg.Rotate(self.angle, centerX, centerY) ]
 
 def set_stamps(stamps: List[StampInfo], image: svg.SVG):
-    if image.elements is None or len(image.elements) < 2:
-        raise AttributeError("SVG is missing elements")
-    g = image.elements[1]
-    if g.elements is None:
-        raise AttributeError("SVG inner container missing elements")
-    stamp_container, = [el for el in g.elements if el.id == "stamps"]
-    stamp_container.elements = [svg.Image(
-        x = s.x,
-        y = s.y,
-        width = s.width,
-        height = s.height,
-        href = s.href,
-        transform = s.transform,
-    ) for s in stamps]
+    if remove_children(image, "stamps"):
+        append_children(image, "stamps", [
+            svg.Image(
+                x = s.x,
+                y = s.y,
+                width = s.width,
+                height = s.height,
+                href = s.href,
+                transform = s.transform,
+            ) for s in stamps
+        ])
