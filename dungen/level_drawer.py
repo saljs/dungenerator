@@ -211,9 +211,15 @@ def handle_no_floors(
 ):
     if not ground_floor_halls:
         remove_children(imgs[-1], "hall_wall_pattern")
-        bg_texture = find_element(imgs[-1], "background_pattern")
         remove_children(imgs[-1], "hallway_pattern")
-        append_children(imgs[-1], "hallway_pattern", bg_texture.elements) # type: ignore
+        if imgs[-1].elements is not None:
+            def set_stroke(els):
+                for el in els:
+                    if el.class_ is not None and "hall" in el.class_:
+                        el.stroke = "url(#background_pattern)"
+                    if el.elements is not None:
+                        set_stroke(el.elements)
+            set_stroke(imgs[-1].elements)
 
     if room_top_texture is not None:
         room_top = create_pattern(Path(room_top_texture).absolute(), scale)
@@ -242,6 +248,7 @@ def handle_no_floors(
                     for el in els:
                         if el.class_ is not None and "room" in el.class_:
                             el.fill = "url(#room_top_pattern)"
+                            el.stroke = "url(#room_top_pattern)"
                         if el.elements is not None:
                             set_fill(el.elements)
                 set_fill(fg_els)

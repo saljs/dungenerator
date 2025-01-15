@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, cast
 from uuid import UUID, uuid4
 
+from .drawing import find_element
 from .dunspec import DunSpec
 from .connections import Bound
 from .encounter import Encounter
@@ -81,8 +82,10 @@ def create_level(
             stairs_bound = Bound(0, 0)
         elif spec.towers:
             # if making towers, reduce number of rooms
-            print(floor_number / (num_floors - 1))
-            rooms_bound = Bound(0, int(spec.rooms.upper * (floor_number / (num_floors - 1))))
+            rooms_bound = Bound(
+                int(spec.rooms.lower * (floor_number / (num_floors - 1))),
+                int(spec.rooms.upper * (floor_number / (num_floors - 1))),
+            )
         
         level = Level(
             spec.updated(rooms = rooms_bound, stairs_down = stairs_bound),
@@ -139,13 +142,56 @@ def main_func():
         "--svg-out",
         type = Path,
         default = None,
-        help = "Export levels to svg file(s).",
+        help = "Export levels to svg files.",
+    )
+    parser.add_argument(
+        "--append",
+        action = "store_true",
+        default = False,
+        help = "Append to existing Dungen savefile.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action = "store_true",
+        default = False,
+        help = "Print a summary.",
     )
     args = parser.parse_args()
     spec = DunSpec.from_yaml(args.spec)
 
     savefile = DungenSave(scale = spec.scale)
+    if args.append:
+        savefile = DungenSave.deserialize(args.savefile)
+        # Add stairs down
+        last_level = len(savefile.levels)
+        last_floor = len(savefile.levels[last_level])
+        selected_rooms = random.choices(
+            savefile.levels[last_level][last_floor],
+            k = spec.entrances,
+        )
+        savefile.levels[last_level][last_floor] = tuple(
+            Room(
+                r.id,
+                r.location,
+                r.width,
+                r.height,
+                r.monsters,
+                r.treasure,
+                r.trap,
+                r.shop,
+                (r.stairs | Stairs.DOWN) if r in selected_rooms else r.stairs,
+            ) for r in savefile.levels[last_level][last_floor]
+        )
+           
+        for room in savefile.levels[last_level][last_floor]:
+            room_el = find_element(savefile.images[last_level][last_floor], f"room-{room.id}")
+            if room_el is not None:
+                room_el.class_ = ["room"] + room.tags # type: ignore[attr-defined] 
+    starting_levels = len(savefile.levels)
+
     for i in progressbar.progressbar(range(1, spec.level_count + 1)):
+        i += starting_levels
         level_spec, = random.choices(spec.levels, weights=[ls.probability for ls in spec.levels])
         stairs_up = []
         if i == 1:
@@ -158,8 +204,9 @@ def main_func():
                 )
         else:
             stairs_up = [ 
-                r.location for r in savefile.levels[i - 1][len(savefile.levels[i - 1])] if r.stairs == Stairs.DOWN
+                r.location for r in savefile.levels[i - 1][len(savefile.levels[i - 1])] if Stairs.DOWN in r.stairs
             ]
+
 
         create_level(
             level_spec,
@@ -167,7 +214,7 @@ def main_func():
             spec.textures[level_spec],
             i,
             savefile,
-            i == spec.level_count,
+            i - starting_levels == spec.level_count,
         )
 
         if args.svg_out is not None:
@@ -177,6 +224,15 @@ def main_func():
             for j, img in enumerate(savefile.images[i]):
                 svg_path = level_dir.joinpath(f"floor_{j + 1}.svg")
                 svg_path.write_text(str(img))
+
+    if args.verbose:
+        print(f"Dungeon has {len(savefile.levels)} levels:")
+        for lvl in savefile.levels:
+            print(f"  Level {lvl}")
+            for floor in savefile.levels[lvl]:
+                down_c = len([r for r in savefile.levels[lvl][floor] if Stairs.DOWN in r.stairs])
+                up_c = len([r for r in savefile.levels[lvl][floor] if Stairs.UP in r.stairs])
+                print(f"    Floor {floor}: {len(savefile.levels[lvl][floor])} Rooms [{up_c} U {down_c} D].")
 
     with args.savefile.open("wb") as out:
         out.write(pickle.dumps(savefile))

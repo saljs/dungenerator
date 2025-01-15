@@ -36,6 +36,7 @@ def render_as_map(orig_map: svg.SVG, scale: int) -> str:
     map_copy.width = None
     map_copy.height = None
     
+    remove_children(map_copy, "background_pattern")
     remove_children(map_copy, "bg-elements")
     remove_children(map_copy, "stamps")
 

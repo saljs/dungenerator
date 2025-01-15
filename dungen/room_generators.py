@@ -152,10 +152,12 @@ def LinearRoomFactory(
             break
         room_count += 1
         yield room
-    
     if spec.rooms.upper == 0:
         return
-    total_rooms = random.randint(spec.rooms.lower, spec.rooms.upper - room_count)
+    total_rooms = (
+        spec.rooms.lower if spec.rooms.upper - room_count > spec.rooms.lower
+        else random.randint(spec.rooms.lower, spec.rooms.upper - room_count)
+    )
     rooms_in_block = Bound(
         lower = int(total_rooms / block_count.upper),
         upper = int(total_rooms / block_count.lower),

@@ -4,7 +4,7 @@ from typing import List, Union
 from uuid import UUID
 
 class Stairs(Flag):
-    NONE = auto()
+    NONE = 0
     UP = auto()
     DOWN = auto()
 
