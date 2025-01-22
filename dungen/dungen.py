@@ -93,7 +93,7 @@ def create_level(
             towers = spec.towers and floor_number < num_floors - 1,
         )
         stairs_up = [r.location for r in level.rooms if Stairs.DOWN in r.stairs]
-            
+
         try:
             drawer = drawer_map[spec.room_shape]
         except KeyError:
@@ -187,7 +187,8 @@ def main_func():
         for room in savefile.levels[last_level][last_floor]:
             room_el = find_element(savefile.images[last_level][last_floor], f"room-{room.id}")
             if room_el is not None:
-                room_el.class_ = ["room"] + room.tags # type: ignore[attr-defined] 
+                room_el.class_ = ["room"] + room.tags # type: ignore[attr-defined]
+            savefile.room_notes[room.id] += "There are stairs down here.\n"
     starting_levels = len(savefile.levels)
 
     for i in progressbar.progressbar(range(1, spec.level_count + 1)):

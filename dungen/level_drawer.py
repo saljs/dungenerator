@@ -209,19 +209,27 @@ def handle_no_floors(
     ground_floor_halls: bool = False,
     room_top_texture: Optional[str] = None,
 ):
+    """Make floors transparent, showing levels below."""
+    def set_texture(els, cls: str, texture: str, set_fill: bool = True):
+        if els is not None:
+            for el in els:
+                if el.class_ is not None and cls in el.class_:
+                    el.stroke = texture
+                    if set_fill:
+                        el.fill = texture
+                set_texture(el.elements, cls, texture, set_fill)
+
     if not ground_floor_halls:
+        # Remove hallways and their walls and replace them with background
+        # texture for the lowest floor
         remove_children(imgs[-1], "hall_wall_pattern")
-        remove_children(imgs[-1], "hallway_pattern")
-        if imgs[-1].elements is not None:
-            def set_stroke(els):
-                for el in els:
-                    if el.class_ is not None and "hall" in el.class_:
-                        el.stroke = "url(#background_pattern)"
-                    if el.elements is not None:
-                        set_stroke(el.elements)
-            set_stroke(imgs[-1].elements)
+        remove_children(imgs[-1], "hall_walls")
+        fg = find_element(imgs[-1], "fg-elements")
+        if fg is not None:
+            set_texture(fg.elements, "hall", "url(#background_pattern)", set_fill = False)
 
     if room_top_texture is not None:
+        # Add a texture to all but the lowest floor with a roof pattern
         room_top = create_pattern(Path(room_top_texture).absolute(), scale)
         for img in imgs[:-1]:
             append_children(img, "defs", [
@@ -234,24 +242,22 @@ def handle_no_floors(
             ])
 
     for i, img in enumerate(imgs):
-        curr_opacity: float = 0
-        curr_scale: float = 1
-        floor_num: int = i + 1
-        while floor_num < len(imgs) and floor_num - i - 1 < max_trans_floors:
+        # For each level, starting from the topmost floor, add the lower
+        # levels, starting with the bottommost, to the background
+        floor_num = min(len(imgs) - 1, i + max_trans_floors)
+        curr_opacity: float = floor_num * opacity_inc
+        while floor_num > i:
             fg = find_element(imgs[floor_num], "fg-elements")
             if fg is None:
                 continue
-            curr_opacity += opacity_inc
             fg_els = strip_ids(fg.elements)
-            if room_top_texture is not None and fg_els is not None:
-                def set_fill(els):
-                    for el in els:
-                        if el.class_ is not None and "room" in el.class_:
-                            el.fill = "url(#room_top_pattern)"
-                            el.stroke = "url(#room_top_pattern)"
-                        if el.elements is not None:
-                            set_fill(el.elements)
-                set_fill(fg_els)
+            if fg_els is None:
+                continue
+
+            if room_top_texture is not None:
+                set_texture(fg_els, "room", "url(#room_top_pattern)")
+                if floor_num < len(imgs) - 1 or ground_floor_halls:
+                    set_texture(fg_els, "hall", "url(#room_top_pattern)", set_fill = False)
 
             new_els: List[svg.Element] = [
                 svg.G(
@@ -265,4 +271,5 @@ def handle_no_floors(
                 ),
             ]
             append_children(img, "bg-elements", new_els, before = "hall_walls")
-            floor_num += 1
+            floor_num -= 1
+            curr_opacity -= opacity_inc

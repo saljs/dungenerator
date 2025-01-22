@@ -45,8 +45,6 @@ def UniformRoomFactory(
     """A generator that returns randomly created rooms."""
     stairs_up = len(up)
     stairs_down = random.randint(spec.stairs_down.lower, spec.stairs_down.upper)
-    if use_towers:
-        stairs_down = max(0, stairs_down - stairs_up)
  
     for _ in range(max(random.randint(spec.rooms.lower, spec.rooms.upper), stairs_up + stairs_down)):
         is_shop = random.random() < spec.shop_chance
@@ -91,7 +89,11 @@ def ClusteredRoomFactory(
     uniform_gen = UniformRoomFactory(spec, up, use_towers)
     start_rooms: List[Room] = []
     while room := next(uniform_gen, None):
-        if room.stairs == Stairs.NONE and len(start_rooms) >= start_count:
+        if (
+            ((use_towers and not Stairs.UP in room.stairs)
+                or (not use_towers and room.stairs == Stairs.NONE))
+            and len(start_rooms) >= start_count
+        ):
             break
         start_rooms.append(room)
         yield room
@@ -148,14 +150,15 @@ def LinearRoomFactory(
     uniform_gen = UniformRoomFactory(spec, up, use_towers)
     room_count = 0
     while room := next(uniform_gen, None):
-        if room.stairs == Stairs.NONE or (use_towers and room_count < spec.rooms.lower):
+        if (
+            (use_towers and not Stairs.UP in room.stairs)
+            or (not use_towers and room.stairs == Stairs.NONE)
+        ):
             break
         room_count += 1
         yield room
-    if spec.rooms.upper == 0:
-        return
     total_rooms = (
-        spec.rooms.lower if spec.rooms.upper - room_count > spec.rooms.lower
+        spec.rooms.lower if spec.rooms.upper - room_count < spec.rooms.lower
         else random.randint(spec.rooms.lower, spec.rooms.upper - room_count)
     )
     rooms_in_block = Bound(
