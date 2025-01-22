@@ -28,9 +28,9 @@ function selectLevel(lvid) {
     );
     // Set correct level URL
     document.getElementById("edit_lvl_btn").onclick = () => {
-        window.location = "/"
-            + document.querySelector("body").dataset.dungeon
-            + "/level/" + lvid + "/" + floor_opts.value;
+        window.open("/" + document.querySelector("body").dataset.dungeon
+            + "/level/" + lvid + "/" + floor_opts.value,
+            "_blank").focus();
     };
     window.location.hash = lvid;    
 }

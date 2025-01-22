@@ -245,7 +245,7 @@ def handle_no_floors(
         # For each level, starting from the topmost floor, add the lower
         # levels, starting with the bottommost, to the background
         floor_num = min(len(imgs) - 1, i + max_trans_floors)
-        curr_opacity: float = floor_num * opacity_inc
+        curr_opacity: float = (floor_num - i) * opacity_inc
         while floor_num > i:
             fg = find_element(imgs[floor_num], "fg-elements")
             if fg is None:
