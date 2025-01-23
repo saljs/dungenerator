@@ -121,7 +121,7 @@ def create_level(
     if "no_floors" in spec.extra:
         handle_no_floors(imgs, savefile.scale, **spec.extra["no_floors"])
 
-    savefile.level_notes[level_number] = f"Level {level_number}: {spec.name}i\nThis level contains {floor_number + 1} floors."
+    savefile.level_notes[level_number] = f"Level {level_number}: {spec.name}\nThis level contains {floor_number + 1} floors."
     savefile.levels[level_number] = {i + 1: rm for i, rm in enumerate(rooms)}
     savefile.images[level_number] = {i + 1: img for i, img in enumerate(imgs)}
 
