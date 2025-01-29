@@ -1,11 +1,15 @@
 import os
 import imagesize
+import re
 import svg
 from dataclasses import dataclass
 from pathlib import Path
+from rapidfuzz import fuzz
 from typing import Dict, List, Optional, Union
 
 from dungen import append_children, remove_children
+
+SEARCH_CUTOFF_RATIO = 90
 
 @dataclass
 class Stamp:
@@ -78,9 +82,12 @@ class StampRepository:
     def search_stamps(self, key: str) -> List[Stamp]:
         """Search for term in all stamp directories, returns a flat list."""
         def match_stamp_name(s: Stamp) -> bool:
-            if s.name.lower().find(key.lower()) > 0:
-                return True
-            return False
+            ratio = fuzz.token_set_ratio(
+                s.name,
+                key,
+                processor = lambda s: re.sub(r"[_\-\.]", " ",  s.lower()),
+            )
+            return ratio > SEARCH_CUTOFF_RATIO
         stamps = [s for s in self.stamps if match_stamp_name(s)]
         for sr in self.dirs:
             stamps += sr.search_stamps(key)
