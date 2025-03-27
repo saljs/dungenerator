@@ -1,4 +1,5 @@
 import logging
+import time
 
 from dungen import DungenSave
 from pathlib import Path
@@ -32,8 +33,12 @@ class DungenList:
     def save(self, dungen_name: str) -> bool:
         dungen_path = self.search_directory / (dungen_name + EXTENSION)
         if dungen_path == self.__current_open_file and self.__current_open_dungen is not None:
+            start = time.time()
             self.__current_open_dungen.serialize(self.__current_open_file)
-            self.logger.info(f"Saved {dungen_name} to {self.__current_open_file}")
+            end = time.time()
+            self.logger.info(f"Saved {dungen_name} to {self.__current_open_file} ({end - start} seconds).")
+            if end - start > 1:
+                self.logger.warn(f"Saving dungen file {self.__current_open_file} took {end - start} seconds.")
             return True
         self.logger.warning(f"Cannot save {dungen_name} as it is not loaded.")
         return False
@@ -44,6 +49,10 @@ class DungenList:
             self.__current_open_file = None
             self.__current_open_dungen = None
         if filepath.exists():
-            self.logger.info(f"Loading DunGen savefile {self.__current_open_file}")
             self.__current_open_file = filepath
+            start = time.time()
             self.__current_open_dungen = DungenSave.deserialize(filepath)
+            end = time.time()
+            self.logger.info(f"Loading DunGen savefile {filepath} ({end - start} seconds).")
+            if end - start > 1:
+                self.logger.warn(f"Loading dungen file {filepath} took {end - start} seconds.")

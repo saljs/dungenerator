@@ -5,7 +5,7 @@ import svg
 from dataclasses import dataclass
 from pathlib import Path
 from rapidfuzz import fuzz
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from dungen import append_children, remove_children
 
@@ -13,26 +13,26 @@ SEARCH_CUTOFF_RATIO = 90
 
 @dataclass
 class Stamp:
-    width: int
-    height: int
     href: str
     name: str
     orig_path: Path
+    size: Optional[Tuple[int, int]] = None
 
     def to_dict(self) -> Dict[str, Union[str, int, None]]:
+        if self.size is None:
+            self.size = imagesize.get(self.orig_path)
+        w, h = self.size
         return {
-            "width": self.width,
-            "height": self.height,
+            "width": w,
+            "height": h,
             "href": self.href,
             "name": self.name,
         }
 
     @classmethod
     def from_file(cls, filepath: Union[Path, str], root: Path) -> "Stamp":
-        w, h = imagesize.get(filepath)
         filepath = Path(filepath)
         return cls(
-            w, h,
             href = str(filepath.relative_to(root)),
             name = os.path.basename(filepath),
             orig_path = filepath,

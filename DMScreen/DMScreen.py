@@ -1,6 +1,6 @@
 from dungen import Encounter
 
-import argparse
+import time
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
@@ -178,11 +178,21 @@ def update_stamps(dungeon: str):
 
 def set_app_config(dungen_files: Path, stamps_path: str, books_url: Optional[str] = None) -> Optional[Flask]:
     app.config["DUNGEONS"] = DungenList(dungen_files, app.logger)
+
+    start = time.time()
     app.config["STAMP_REPO"] = StampRepository.from_path(stamps_path)
+    end = time.time()
+    if end - start > 1:
+        app.logger.warn(f"Startup took {end - start} seconds.")
+    else:
+        app.logger.info(f"Startup took {end - start} seconds.")
+
     app.config["BOOKS_URL"] = books_url
     return app
 
 def main_func():
+    import argparse
+    import logging
     parser = argparse.ArgumentParser(description="DMscreen: View, edit, and run games for a dungeon.")
     parser.add_argument(
         "dungens_path",
@@ -208,6 +218,7 @@ def main_func():
     )
     args = parser.parse_args()
 
+    app.logger.setLevel(logging.DEBUG)
     set_app_config(args.dungens_path, args.stamps_path, args.books_url)
     app.run(port = args.port)
 

@@ -10,7 +10,6 @@ import random
 import svg
 
 from dataclasses import dataclass, field
-from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, cast
 from uuid import UUID, uuid4
@@ -51,7 +50,7 @@ class DungenSave:
         if not isinstance(path, Path):
             path = Path(path)
         with path.open("wb") as out:
-            out.write(pickle.dumps(self))
+            pickle.dump(self, out, protocol = pickle.HIGHEST_PROTOCOL)
 
     @classmethod
     def deserialize(cls, path: Union[str, Path]) -> "DungenSave":
