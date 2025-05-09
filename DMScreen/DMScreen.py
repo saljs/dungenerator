@@ -41,6 +41,7 @@ def level_screen(dungeon: str, lvid: int, floorid: int):
         dungen_name = dungeon,
         lvid = lvid,
         floorid = floorid,
+        book_url = app.config["BOOKS_URL"] if app.config["BOOKS_URL"] else "",
     )
 
 @app.route("/<dungeon>/encounter/<roomId>")
@@ -115,9 +116,19 @@ def stamp_response(stamps: StampRepository):
 @app.route("/api/stamprepo")
 def get_stamps_root():
     stamps = app.config["STAMP_REPO"]
+    results = None
     key = request.args.get("q", None)
     if key:
         results = stamps.search_stamps(key)
+    dungeon = request.args.get("dungeon", None)
+    if dungeon:
+        lvid = request.args.get("lvid", None)
+        floorid = request.args.get("floorid", None)
+        if lvid is None or floorid is None:
+            abort(400, "Error: lvid and floorid are required parameters.")
+        d = app.config["DUNGEONS"].get(dungeon)
+        results = stamps.in_svg(d.images[int(lvid)][int(floorid)])
+    if results is not None:
         return jsonify({
             "parent": "",
             "stamps": [s.to_dict() for s in results],
@@ -133,15 +144,14 @@ def get_stamps(path):
         return None
     return stamp_response(stamps)
 
-@app.route("/api/save/<dungeon>", methods=["POST"])
+@app.route("/api/save/<dungeon>", methods=["GET", "POST"])
 def update_dungeon(dungeon: str):
-    if request.json is None:
-        abort(400)
     d = app.config["DUNGEONS"].get(dungeon)
     if d is None:
         abort(404)
-    for lvl, text in request.json.get("levels", {}).items():
-        d.level_notes[int(lvl)] = text
+    if request.method == "POST" and request.json is not None:
+        for lvl, text in request.json.get("levels", {}).items():
+            d.level_notes[int(lvl)] = text
     if app.config["DUNGEONS"].save(dungeon):
         return "OK"
     abort(500)
@@ -157,9 +167,7 @@ def update_rooms(dungeon: str):
         roomId = UUID(rid)
         d.room_notes[roomId] = info["notes"]
         d.room_encounters[roomId] = Encounter.from_dict(info["encounter"])
-    if app.config["DUNGEONS"].save(dungeon):
-        return "OK"
-    abort(500);
+    return "OK"
 
 @app.route("/api/save/<dungeon>/stamps", methods=["POST"])
 def update_stamps(dungeon: str):
@@ -172,9 +180,7 @@ def update_stamps(dungeon: str):
     floorid = request.json.get("floorid")
     stamps = [StampInfo(**s) for s in request.json.get("stamps", [])]
     set_stamps(stamps, d.images[lvid][floorid])
-    if app.config["DUNGEONS"].save(dungeon):
-        return "OK"
-    abort(500);
+    return "OK"
 
 def set_app_config(dungen_files: Path, stamps_path: str, books_url: Optional[str] = None) -> Optional[Flask]:
     app.config["DUNGEONS"] = DungenList(dungen_files, app.logger)

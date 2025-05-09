@@ -7,7 +7,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 from typing import Dict, List, Optional, Union, Tuple
 
-from dungen import append_children, remove_children
+from dungen import append_children, find_element, remove_children
 
 SEARCH_CUTOFF_RATIO = 90
 
@@ -92,6 +92,22 @@ class StampRepository:
         for sr in self.dirs:
             stamps += sr.search_stamps(key)
         return stamps
+
+    def in_svg(self, img: svg.SVG) -> List[Stamp]:
+        """Return a list of stamps used in a SVG image."""
+        stamp_root = find_element(img, "stamps")
+        if stamp_root is None or stamp_root.elements is None:
+            return []
+        # Remove the first 8 chars "/stamps/" from href
+        hrefs = set([el.href[8:] for el in stamp_root.elements]) # type: ignore
+        print(hrefs)
+        def find_stamp_hrefs(sr: "StampRepository") -> List[Stamp]:
+            m = [s for s in sr.stamps if s.href in hrefs]
+            print(m)
+            for sd in sr.dirs:
+                m += find_stamp_hrefs(sd)
+            return m
+        return find_stamp_hrefs(self)
 
     @classmethod
     def from_path(cls, path: Union[Path|str]) -> "StampRepository":

@@ -88,6 +88,7 @@ body {
     background-color: #fff;
     flex-grow: 1;
     overflow-y: scroll;
+    display: inline-block;
 }
 
 #encounter {

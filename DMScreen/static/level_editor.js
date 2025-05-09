@@ -73,20 +73,19 @@ function updateRoomInfo(id) {
 function syncRoomText() {
     const tb = document.getElementById("room_info");
     if ("currentRoom" in tb.dataset) {
-        cachedInfo[tb.dataset.currentRoom].notes = tb.innerText;
+        cachedInfo[tb.dataset.currentRoom].notes = tb.innerText.trim();
     }
     document.getElementById("save_btn").classList.remove("success");
     return tb;
 }
 
-function selectRoom(id) {
-    const uid = id.slice(5);
+function selectRoom(uid) {
     removeStylefromSVG("selected-room");
     addStyletoSVG("selected-room",
-        "#" + id + "{ stroke: aqua; stroke-width: $$px; }");
+        "#room-" + uid + "{ stroke: aqua; stroke-width: $$px; }");
     const tb = syncRoomText();
     tb.dataset.currentRoom = uid;
-    tb.contentEditable = true;
+    tb.contentEditable = "plaintext-only";
     document.querySelectorAll("#encounter form input").forEach((input) => {
         input.disabled = false;
     });
@@ -94,7 +93,18 @@ function selectRoom(id) {
         + document.querySelector("body").dataset.dungeon
         + "/encounter/" + uid;
     updateRoomInfo(uid).then((info) => {
-        tb.innerText = info.notes;
+        const books_url = document.querySelector("body").dataset.bookurl;
+        let noteStr = info.notes.trim().replaceAll(/\n/g, "<br>");
+        if (books_url) {
+            noteStr = noteStr.replaceAll(/([A-Za-z0-9]{3})pg(\d+)/g, 
+                (match, book, page) => '<a href="'
+                    + books_url.replace("$b", book.toLowerCase()).replace("$p", page)
+                    + '" onmousedown="window.open(this.href, \'_blank\').focus()"'
+                    + ' target="_blanket">' + match + "</a>");
+        }
+                
+        console.log(noteStr);
+        tb.innerHTML = noteStr;
         setEncounterItems(info.encounter);
     });
     window.location.hash = uid;
@@ -130,7 +140,7 @@ function toggleStyle(className, btn) {
 function saveRooms() {
     syncRoomText();
     const jsonBody = JSON.stringify(cachedInfo);
-    fetch("/api/save/" + document.querySelector("body").dataset.dungeon + "/rooms", {
+    return fetch("/api/save/" + document.querySelector("body").dataset.dungeon + "/rooms", {
         method: "POST",
         headers: {
             "Accept": "application/json",
@@ -237,7 +247,7 @@ function saveStamps() {
             href: href, angle: angle,
         });
     });
-    fetch("/api/save/" + document.querySelector("body").dataset.dungeon + "/stamps", {
+    return fetch("/api/save/" + document.querySelector("body").dataset.dungeon + "/stamps", {
         method: "POST",
         headers: {
             "Accept": "application/json",
@@ -257,8 +267,9 @@ function showStamps(path) {
     if (path) {
         apiURL += "/" + path;
     }
-    const stampDisplayHandler = (sr) =>{
+    const stampDisplayHandler = (sr) => {
         const children = [
+            document.createElement("input"),
             document.createElement("input"),
         ];
         children[0].type = "text";
@@ -266,6 +277,15 @@ function showStamps(path) {
         children[0].addEventListener("change", (sb) => {
             fetch("/api/stamprepo?q=" + sb.target.value)
                 .then((r) => r.json()).then(stampDisplayHandler);
+        });
+        children[1].type = "button";
+        children[1].value = "Stamps in Level";
+        children[1].addEventListener("click", () => {
+            fetch("/api/stamprepo?dungeon="
+                + document.querySelector("body").dataset.dungeon
+                + "&lvid=" + document.querySelector(".map").dataset.lvid
+                + "&floorid=" + document.querySelector(".map").dataset.floorid
+            ).then((r) => r.json()).then(stampDisplayHandler);
         });
         if (sr.parent !== null) {
             const parentDir = document.createElement("div");
@@ -315,7 +335,7 @@ function showStamps(path) {
 document.addEventListener("DOMContentLoaded", function() {
     // Add click handler to rooms
     document.querySelectorAll(".map .room").forEach((rm) => {
-        rm.onclick = () => { selectRoom(rm.id); };
+        rm.onclick = () => { selectRoom(rm.id.slice(5)); };
     });
     document.getElementById("bg-elements").onclick = deselectRoom;
     document.querySelectorAll(".map .hall").forEach((hall) => {
@@ -408,9 +428,15 @@ document.addEventListener("DOMContentLoaded", function() {
     // Add handlers for save
     const save_btn = document.getElementById("save_btn");
     save_btn.onclick = () => {
-        saveRooms();
-        saveStamps();
-        document.getElementById("save_btn").classList.add("success");
+        Promise.all([
+            saveRooms(),
+            saveStamps(),
+        ]).then(() => {
+            fetch("/api/save/" + document.querySelector("body").dataset.dungeon)
+            .then(() => {
+                document.getElementById("save_btn").classList.add("success");
+            });
+        });
     };
     window.addEventListener("beforeunload", (e) => {
         if (save_btn.classList.contains("success")) {
@@ -422,6 +448,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Check if there is a room selected in the URL
     if (window.location.hash) {
-        selectRoom("room-" + window.location.hash.slice(1));
+        selectRoom(window.location.hash.slice(1));
     }
 });
