@@ -94,16 +94,17 @@ function selectRoom(uid) {
         + "/encounter/" + uid;
     updateRoomInfo(uid).then((info) => {
         const books_url = document.querySelector("body").dataset.bookurl;
-        let noteStr = info.notes.trim().replaceAll(/\n/g, "<br>");
+        let noteStr = info.notes.trim().replaceAll(/\n/g, "<br>")
+            .replaceAll(/(https?:\/\/[^ ]*)/ig,
+                '<a href="$&" onmousedown="window.open(this.href, \'_blank\').focus()">$&</a>');
         if (books_url) {
-            noteStr = noteStr.replaceAll(/([A-Za-z0-9]{3})pg(\d+)/g, 
+            noteStr = noteStr.replaceAll(/([A-Za-z0-9]{3,5})pg(\d+)/g, 
                 (match, book, page) => '<a href="'
                     + books_url.replace("$b", book.toLowerCase()).replace("$p", page)
                     + '" onmousedown="window.open(this.href, \'_blank\').focus()"'
-                    + ' target="_blanket">' + match + "</a>");
+                    + '>' + match + "</a>");
         }
                 
-        console.log(noteStr);
         tb.innerHTML = noteStr;
         setEncounterItems(info.encounter);
     });
