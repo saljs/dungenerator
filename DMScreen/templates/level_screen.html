@@ -40,10 +40,10 @@
                 </div>
                 <a id="zoom_to_fit_btn">Zoom to fit</a>
                 <a id="add_stamp_btn">Add stamp</a>
-                {% if floorid - 1 in dungeon.levels[lvid] %}
+                {% if floorid > 1 %}
                 <a href="/{{ dungen_name }}/level/{{ lvid }}/{{ floorid - 1 }}">Floor up</a>
                 {% endif %}
-                {% if floorid + 1 in dungeon.levels[lvid] %}
+                {% if floorid + 1 <= floors %}
                 <a href="/{{ dungen_name }}/level/{{ lvid }}/{{ floorid + 1 }}">Floor down</a>
                 {% endif %}
                 <a target="blank" id="view_map_btn">Map view</a>
@@ -52,11 +52,11 @@
             </div>
             <div class="container stretch">
                 <div class="map"
-                    data-scale="{{ dungeon.scale }}"
+                    data-scale="{{ scale }}"
                     data-lvid="{{ lvid }}"
                     data-floorid="{{ floorid }}"
                 >
-                    {{ dungeon.images[lvid][floorid] | safe }}
+                    {{ img | safe }}
                 </div>
                 <div class="notes cols">
                     <div id="room_info"></div>

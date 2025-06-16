@@ -1,15 +1,30 @@
-from dungen import Encounter
+from dungen import Encounter, FloorData, DungenSave, StampInfo
 
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 from .dungeons import DungenList
-from .stamps import StampInfo, StampRepository, set_stamps
+from .stamps import StampRepository
 from .maps import render_as_map
 
 app = Flask(__name__)
+
+def check_get_floor(dungeon: str, lvid: int, floorid: int) -> Tuple[DungenSave, FloorData]:
+    """Returns the specified floor, aborting if any pat of the path does not
+    exist."""
+    start = time.time()
+    d = app.config["DUNGEONS"][dungeon]
+    if d is None:
+        abort(404)
+    f = d.get_floor(lvid, floorid)
+    if f is None:
+        abort(404)
+    end = time.time()
+    if end - start > app.config["WARN_SECS"]:
+        app.logger.warn(f"Opening level {lvid} floor {floorid} in '{dungeon}' took {end - start} seconds.")
+    return d, f
 
 @app.route("/")
 def dungeon_index():
@@ -20,34 +35,36 @@ def dungeon_index():
 
 @app.route("/<dungeon>")
 def level_index(dungeon: str):
-    d = app.config["DUNGEONS"].get(dungeon)
+    d = app.config["DUNGEONS"][dungeon]
     if d is None:
         abort(404)
     return render_template(
         "level_index.html",
         dungen_name = dungeon,
-        dungeon = d,
-        len = len,
+        levels = range(1, d.levels + 1),
+        floors = { i: d.floor_count(i) for i in range(1, d.levels + 1) },
+        notes = d.get_level_notes(),
     )
 
 @app.route("/<dungeon>/level/<int:lvid>/<int:floorid>")
 def level_screen(dungeon: str, lvid: int, floorid: int):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
+    d, f = check_get_floor(dungeon, lvid, floorid)
     return render_template(
         "level_screen.html",
-        dungeon = d,
         dungen_name = dungeon,
         lvid = lvid,
         floorid = floorid,
+        floors = d.floor_count(lvid),
+        scale = d.scale,
+        img = f.img,
         book_url = app.config["BOOKS_URL"] if app.config["BOOKS_URL"] else "",
     )
 
-@app.route("/<dungeon>/encounter/<roomId>")
-def encounter_screen(dungeon: str, roomId: str):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
+@app.route("/<dungeon>/encounter/<int:lvid>/<int:floorid>/<roomId>")
+def encounter_screen(dungeon: str, lvid: int, floorid: int, roomId: str):
+    d, f = check_get_floor(dungeon, lvid, floorid)
+    uid = UUID(roomId)
+    if f is None:
         abort(404)
     def book_link(book:str, page: int) -> str:
         if app.config["BOOKS_URL"]:
@@ -55,37 +72,33 @@ def encounter_screen(dungeon: str, roomId: str):
         return "#"
     return render_template(
         "encounter_screen.html",
-        dungeon = d,
-        roomId = UUID(roomId),
+        room = f[uid],
+        roomId = uid,
         createBookLink = book_link,
     )
 
 @app.route("/<dungeon>/map/<int:lvid>/<int:floorid>")
 def map_screen(dungeon: str, lvid: int, floorid: int):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
+    d, f = check_get_floor(dungeon, lvid, floorid)
     return render_template(
         "map_screen.html",
         lvid = lvid,
         floorid = floorid,
         dungen_name = dungeon,
-        dungeon = d,
+        floors = d.floor_count(lvid),
+        scale = d.scale,
+        img = f.img,
     )
 
 @app.route("/<dungeon>/export/<int:lvid>/<int:floorid>")
 def map_export(dungeon: str, lvid: int, floorid: int):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
-    return Response(render_as_map(d.images[lvid][floorid], d.scale), mimetype="image/svg+xml")
+    d, f = check_get_floor(dungeon, lvid, floorid)
+    return Response(render_as_map(f.img, d.scale), mimetype="image/svg+xml")
 
 @app.route("/svg/<dungeon>/<int:lvid>/<int:floorid>")
 def raw_svg(dungeon: str, lvid: int, floorid: int):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
-    return Response(str(d.images[lvid][floorid]), mimetype="image/svg+xml")
+    _, f = check_get_floor(dungeon, lvid, floorid)
+    return Response(str(f.img), mimetype="image/svg+xml")
 
 @app.route("/stamps/<path:path>")
 def get_stamp(path):
@@ -94,16 +107,6 @@ def get_stamp(path):
         abort(404)
         return None
     return send_file(stamp_file)
-
-@app.route("/api/<dungeon>/room/<roomId>")
-def room_notes(dungeon: str, roomId: str):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
-    return jsonify({
-        "notes": d.room_notes[UUID(roomId)],
-        "encounter": d.room_encounters[UUID(roomId)],
-    })
 
 def stamp_response(stamps: StampRepository):
     ret = {
@@ -119,15 +122,11 @@ def get_stamps_root():
     results = None
     key = request.args.get("q", None)
     if key:
+        start = time.time()
         results = stamps.search_stamps(key)
-    dungeon = request.args.get("dungeon", None)
-    if dungeon:
-        lvid = request.args.get("lvid", None)
-        floorid = request.args.get("floorid", None)
-        if lvid is None or floorid is None:
-            abort(400, "Error: lvid and floorid are required parameters.")
-        d = app.config["DUNGEONS"].get(dungeon)
-        results = stamps.in_svg(d.images[int(lvid)][int(floorid)])
+        end = time.time()
+        if end - start > app.config["WARN_SECS"]:
+            app.logger.warn(f"Searching for stamps with termp '{key}' took {end - start} seconds.")
     if results is not None:
         return jsonify({
             "parent": "",
@@ -146,54 +145,54 @@ def get_stamps(path):
 
 @app.route("/api/save/<dungeon>", methods=["GET", "POST"])
 def update_dungeon(dungeon: str):
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
-    if request.method == "POST" and request.json is not None:
-        for lvl, text in request.json.get("levels", {}).items():
-            d.level_notes[int(lvl)] = text
-    if app.config["DUNGEONS"].save(dungeon):
-        return "OK"
-    abort(500)
-
-@app.route("/api/save/<dungeon>/rooms", methods=["POST"])
-def update_rooms(dungeon: str):
     if request.json is None:
         abort(400)
-    d = app.config["DUNGEONS"].get(dungeon)
+    d = app.config["DUNGEONS"][dungeon]
     if d is None:
         abort(404)
-    for rid, info in request.json.items():
+    start = time.time()
+    for lvl, text in request.json.get("levels", {}).items():
+        d.set_level_note(int(lvl), text)
+    end = time.time()
+    if end - start > app.config["WARN_SECS"]:
+        app.logger.warn(f"Saving level notes in '{dungeon}' took {end - start} seconds.")
+    return "OK"
+
+@app.route("/api/save/<dungeon>/<int:lvid>/<int:floorid>", methods=["POST"])
+def update_floor(dungeon: str, lvid: int, floorid: int):
+    if request.json is None:
+        abort(400)
+    d, f = check_get_floor(dungeon, lvid, floorid)
+    for rid, info in request.json.get("rooms", {}).items():
         roomId = UUID(rid)
-        d.room_notes[roomId] = info["notes"]
-        d.room_encounters[roomId] = Encounter.from_dict(info["encounter"])
+        f[roomId] = info
+    start = time.time()
+    f.set_stamps([StampInfo(**s) for s in request.json.get("stamps", [])])
+    d.set_floor(lvid, floorid, f)
+    end = time.time()
+    if end - start > app.config["WARN_SECS"]:
+        app.logger.warn(f"Saving level {lvid} floor {floorid} in '{dungeon}' took {end - start} seconds.")
     return "OK"
 
-@app.route("/api/save/<dungeon>/stamps", methods=["POST"])
-def update_stamps(dungeon: str):
-    if request.json is None:
-        abort(400)
-    d = app.config["DUNGEONS"].get(dungeon)
-    if d is None:
-        abort(404)
-    lvid = request.json.get("lvid")
-    floorid = request.json.get("floorid")
-    stamps = [StampInfo(**s) for s in request.json.get("stamps", [])]
-    set_stamps(stamps, d.images[lvid][floorid])
-    return "OK"
-
-def set_app_config(dungen_files: Path, stamps_path: str, books_url: Optional[str] = None) -> Optional[Flask]:
-    app.config["DUNGEONS"] = DungenList(dungen_files, app.logger)
+def set_app_config(
+    dungen_files: Path,
+    stamps_path: str,
+    books_url: Optional[str] = None,
+    warn_duration: float = 1.0,
+) -> Optional[Flask]:
+    """Return the DMScreen app with parameters set."""
+    app.config["DUNGEONS"] = DungenList(dungen_files)
 
     start = time.time()
     app.config["STAMP_REPO"] = StampRepository.from_path(stamps_path)
     end = time.time()
-    if end - start > 1:
+    if end - start > warn_duration:
         app.logger.warn(f"Startup took {end - start} seconds.")
     else:
         app.logger.info(f"Startup took {end - start} seconds.")
 
     app.config["BOOKS_URL"] = books_url
+    app.config["WARN_SECS"] = warn_duration
     return app
 
 def main_func():
@@ -217,6 +216,12 @@ def main_func():
         default = None,
     )
     parser.add_argument(
+        "--warn-duration",
+        type = int,
+        help = "Log a warning if operation takes longer than thiw many seconds.",
+        default = 1,
+    )
+    parser.add_argument(
         "--port",
         type = int,
         help = "Port to run local server on",
@@ -225,7 +230,7 @@ def main_func():
     args = parser.parse_args()
 
     app.logger.setLevel(logging.DEBUG)
-    set_app_config(args.dungens_path, args.stamps_path, args.books_url)
+    set_app_config(args.dungens_path, args.stamps_path, args.books_url, args.warn_duration)
     app.run(port = args.port)
 
 if __name__ == "__main__":

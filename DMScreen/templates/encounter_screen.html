@@ -20,7 +20,7 @@
     </head>
     <body class="container cols">
         <h1>Encounter</h1>
-        <pre> {{ dungeon.room_notes[roomId] }} </pre>
+        <pre> {{ room["notes"] }} </pre>
         <table>
             <thead>
                 <tr>
@@ -33,7 +33,7 @@
                 </tr>
             </thead>
             <tbody id="encounter-table">
-                {% for item in dungeon.room_encounters[roomId].items %}
+                {% for item in room["encounter"].items %}
                     <tr>
                         <td>
                             <a target="blank" href="{{ createBookLink(item.book, item.book_page) }}">

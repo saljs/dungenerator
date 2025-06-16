@@ -2,10 +2,10 @@ import math
 import svg
 
 from enum import Enum
-from typing import Collection, List
 from random import Random
+from typing import List
 
-from .connections import Connections, Hallway
+from .connections import Hallway
 from .level import Level
 from .level_drawer import LevelDrawer
 from .rooms import Room, Point, Stairs
@@ -71,78 +71,65 @@ class OrganicRoomDrawer(LevelDrawer):
     """Draws organic looking rooms and meandering hallways."""
 
     @staticmethod
-    def draw_rooms(
-        rooms: Collection[Room], scale: int, fill: str, border: str, rng: Random, set_ids: bool = True
-    ) -> List[svg.Element]:
-        ret: List[svg.Element] = []
-        for r in rooms:
-            center_point = Point(
-                r.location.x + (r.width / 2),
-                r.location.y + (r.height / 2),
-            )
-            num_int_points = 6
-            points: List[Point] = []
-            first_point = None
-            last_point = None
-            for i in range(num_int_points):
-                p = random_point_on_ellipse(
-                    center_point,
-                    r.width,
-                    r.height, 
-                    ((2 * math.pi) / num_int_points) * i,
-                    ((2 * math.pi) / num_int_points) * (i + 1),
-                    rng,
-                )
-                if last_point is not None:
-                    points += random_walk(last_point, p, PATH_SEG_LEN, rng)
-                else:
-                    first_point = p
-                last_point = p
-            points += random_walk(last_point, first_point, PATH_SEG_LEN, rng) # type: ignore[arg-type]
-
-            ret +=  [
-                svg.Path(
-                    d = points_to_pathstr(points, scale), # type: ignore[arg-type]
-                    fill = fill,
-                    stroke = border,
-                    id = f"room-{r.id}" if set_ids else None,
-                    class_ = (["room"] + r.tags) if set_ids else None,
-                    stroke_width = scale * 2,
-                    paint_order = "stroke",
-                ),
-            ]
-        return ret
-
-    @staticmethod
-    def draw_hallways(
-        hallways: Connections, scale: int, fill: str, width: int, rng: Random
-    ) -> List[svg.Element]:
-        ret:List[svg.Element] = []
-        for hall in hallways:
-            start_point = Point(
-                int(hall.room1.location.x + (hall.room1.width  / 2)),
-                int(hall.room1.location.y + (hall.room1.height / 2)),
-            )
-            mid_point = random_point_in_triangle(
-                hall.room1.location,
-                Point(hall.room1.location.x, hall.room2.location.y) if rng.random() < 0.5
-                else Point(hall.room2.location.x, hall.room1.location.y),
-                hall.room2.location,
+    def draw_room(
+        room: Room, scale: int, fill: str, border: str, rng: Random
+    ) -> svg.Element:
+        center_point = Point(
+            room.location.x + (room.width / 2),
+            room.location.y + (room.height / 2),
+        )
+        num_int_points = 6
+        points: List[Point] = []
+        first_point = None
+        last_point = None
+        for i in range(num_int_points):
+            p = random_point_on_ellipse(
+                center_point,
+                room.width,
+                room.height, 
+                ((2 * math.pi) / num_int_points) * i,
+                ((2 * math.pi) / num_int_points) * (i + 1),
                 rng,
             )
-            end_point = Point(
-                int(hall.room2.location.x + (hall.room2.width  / 2)),
-                int(hall.room2.location.y + (hall.room2.height / 2)),
-            )
-            points = random_walk(start_point, mid_point, PATH_SEG_LEN, rng)
-            points += random_walk(mid_point, end_point, PATH_SEG_LEN, rng)
-            ret += [ 
-                svg.Path(
-                    d = points_to_pathstr(points, scale, closed=False), # type: ignore[arg-type]
-                    fill = "transparent",
-                    stroke = fill,
-                    stroke_width = scale * width,
-                    class_ = ["hall"],
-                ),
-            ]
-        return ret
+            if last_point is not None:
+                points += random_walk(last_point, p, PATH_SEG_LEN, rng)
+            else:
+                first_point = p
+            last_point = p
+        points += random_walk(last_point, first_point, PATH_SEG_LEN, rng) # type: ignore[arg-type]
+
+        return svg.Path(
+            d = points_to_pathstr(points, scale), # type: ignore[arg-type]
+            fill = fill,
+            stroke = border,
+            stroke_width = scale * 2,
+            paint_order = "stroke",
+        )
+
+    @staticmethod
+    def draw_hallway(
+        hallway: Hallway, scale: int, fill: str, width: int, rng: Random
+    ) -> svg.Element:
+       start_point = Point(
+           int(hallway.room1.location.x + (hallway.room1.width  / 2)),
+           int(hallway.room1.location.y + (hallway.room1.height / 2)),
+       )
+       mid_point = random_point_in_triangle(
+           hallway.room1.location,
+           Point(hallway.room1.location.x, hallway.room2.location.y) if rng.random() < 0.5
+           else Point(hallway.room2.location.x, hallway.room1.location.y),
+           hallway.room2.location,
+           rng,
+       )
+       end_point = Point(
+           int(hallway.room2.location.x + (hallway.room2.width  / 2)),
+           int(hallway.room2.location.y + (hallway.room2.height / 2)),
+       )
+       points = random_walk(start_point, mid_point, PATH_SEG_LEN, rng)
+       points += random_walk(mid_point, end_point, PATH_SEG_LEN, rng)
+       return svg.Path(
+           d = points_to_pathstr(points, scale, closed=False), # type: ignore[arg-type]
+           fill = "transparent",
+           stroke = fill,
+           stroke_width = scale * width,
+       )

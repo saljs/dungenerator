@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 from .room_generators import LevelSpec
 from .connections import Bound
 from .level_drawer import FillPatterns, paths_to_patterns
-from .rooms import Point
 
 
 class DunSpecLoader(yaml.SafeLoader):
@@ -82,6 +81,7 @@ class DunSpec:
                 Path(filepaths["hallway"]).absolute(),
                 Path(filepaths["room_wall"]).absolute(),
                 Path(filepaths["hall_wall"]).absolute(),
+                Path(filepaths["water"]).absolute(),
                 scale_factor,
                 filepaths.get("background_grid", False),
                 filepaths.get("room_grid", True),

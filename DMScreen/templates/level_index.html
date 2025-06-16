@@ -8,7 +8,7 @@
     </head>
     <body class="container" data-dungeon="{{ dungen_name }}">
         <div class="buttons container cols">
-        {% for lvid in dungeon.levels %}
+        {% for lvid in levels %}
             <a class="choose_lvl_btn" data-lvid="{{ lvid }}">
                 Level {{ lvid }}
             </a>
@@ -16,11 +16,11 @@
         </div>
         <div class="container cols stretch">
             <div class="notes stretch">
-            {% for lvid in dungeon.levels %}
+            {% for lvid, note in notes.items() %}
                 <textarea spellcheck="true" 
                     data-lvid="{{ lvid }}"
-                    data-floors="{{ len(dungeon.levels[lvid]) }}"
-                >{{ dungeon.level_notes[lvid] }}</textarea>
+                    data-floors="{{ floors[lvid] }}"
+                >{{ note }}</textarea>
             {% endfor %}
             </div>
             <div class="buttons container">

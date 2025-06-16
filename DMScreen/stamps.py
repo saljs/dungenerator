@@ -121,33 +121,3 @@ class StampRepository:
                 stamps = sorted([Stamp.from_file(f, path) for f in files if f.is_file()], key=lambda f: f.name),
             )
         return walk_dirs(path)
-
-@dataclass
-class StampInfo:
-    x: int
-    y: int
-    height: int
-    width: int
-    href: str
-    angle: int
-
-    @property
-    def transform(self) -> Optional[List[svg.Transform]]:
-        if self.angle == 0:
-            return None
-        centerX = self.x + (self.width / 2)
-        centerY = self.y + (self.height / 2)
-        return [ svg.Rotate(self.angle, centerX, centerY) ]
-
-def set_stamps(stamps: List[StampInfo], image: svg.SVG):
-    if remove_children(image, "stamps"):
-        append_children(image, "stamps", [
-            svg.Image(
-                x = s.x,
-                y = s.y,
-                width = s.width,
-                height = s.height,
-                href = s.href,
-                transform = s.transform,
-            ) for s in stamps
-        ])
