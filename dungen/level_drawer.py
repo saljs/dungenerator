@@ -118,7 +118,6 @@ class LevelDrawer(ABC):
                     "none",
                     "url(#room_wall_pattern)",
                     Random(rng_seed),
-                    set_ids = False,
                 ),
                 id = "room_walls",
             ),
@@ -141,6 +140,7 @@ class LevelDrawer(ABC):
                     "url(#room_pattern)",
                     "none",
                     Random(rng_seed),
+                    set_ids = True,
                 ),
                 id = "rooms",
             ),
@@ -190,18 +190,20 @@ class LevelDrawer(ABC):
 
     @classmethod
     def draw_rooms(
-        cls, rooms: Collection[Room], scale: int, fill: str, border: str, rng: Random, set_ids: bool = True
+        cls, rooms: Collection[Room], scale: int, fill: str, border: str, rng: Random, set_ids: bool = False
     ) -> List[svg.Element]:
         ret = []
         for r in rooms:
             room = cls.draw_room(r, scale, fill, border, rng)
-            room.class_ = ["room"] + r.tags # type: ignore[attr-defined]
-            room.data = {
-                "room-note": quote(r.note),
-                "room-encounter": quote("{\"items\":[]}"),
-                "x": r.location.x,
-                "y": r.location.y,
-            }
+            if set_ids:
+                room.id = f"room-{r.id}"
+                room.class_ = ["room"] + r.tags # type: ignore[attr-defined]
+                room.data = {
+                    "room-note": quote(r.note),
+                    "room-encounter": quote("{\"items\":[]}"),
+                    "x": r.location.x,
+                    "y": r.location.y,
+                }
             ret.append(room)
         return ret
 

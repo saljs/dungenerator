@@ -50,7 +50,7 @@ def level_index(dungeon: str):
 def level_screen(dungeon: str, lvid: int, floorid: int):
     d, f = check_get_floor(dungeon, lvid, floorid)
     return render_template(
-        "level_screen.html",
+        "level_editor.html",
         dungen_name = dungeon,
         lvid = lvid,
         floorid = floorid,
@@ -165,6 +165,7 @@ def update_floor(dungeon: str, lvid: int, floorid: int):
     d, f = check_get_floor(dungeon, lvid, floorid)
     for rid, info in request.json.get("rooms", {}).items():
         roomId = UUID(rid)
+        info["encounter"] = Encounter.from_dict(info["encounter"])
         f[roomId] = info
     start = time.time()
     f.set_stamps([StampInfo(**s) for s in request.json.get("stamps", [])])

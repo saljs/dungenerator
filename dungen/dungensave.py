@@ -48,7 +48,7 @@ class FloorData:
         return {
             "notes": unquote(room.data["room-note"]),
             "encounter": Encounter.from_dict(json.loads(unquote(room.data["room-encounter"]))),
-            "attributes": [c for c in room._class], # type: ignore[attr-defined]
+            "attributes": [c for c in room.class_], # type: ignore[attr-defined]
         }
 
     def __setitem__(self, roomId: UUID, value: Dict[str, Union[str, Encounter, List[str]]]):
@@ -59,9 +59,9 @@ class FloorData:
         if room.data is None:
             raise AttributeError(f"Room {roomId} is missing required attributes")
         room.data["room-note"] = quote(notes)
-        room.data["room-encounter"] = quote(json.dumps(encounter.to_dict()))
+        room.data["room-encounter"] = quote(json.dumps(encounter.to_dict(), separators=(',', ':')))
         editable_attrs = ["monsters", "treasure", "trap", "shop"]
-        room.class_ = [a for a in room._class if a not in editable_attrs] # type: ignore[attr-defined]
+        room.class_ = [a for a in room.class_ if a not in editable_attrs] # type: ignore[attr-defined]
         room.class_ += [a for a in editable_attrs if a in attributes] # type: ignore[attr-defined]
 
     def room_elements(self, fltr: Optional[str] = None) -> List[svg.Element]:

@@ -22,7 +22,7 @@ body {
     overflow-y: scroll;
 }
 
-.buttons a {
+.buttons a,select {
     flex-grow: 1;
     padding: 1em;
     background-color: #153a5e;
@@ -32,6 +32,7 @@ body {
     font-size: 1.2em;
     text-align: center;
     align-content: center;
+    border: none;
 }
 .buttons a:hover {
     background-color: gray;
@@ -79,6 +80,12 @@ body {
     flex-wrap: wrap;
 }
 
+#notes-mode {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
 #room_info {
     width: 20vw;
     max-height: 50%;
@@ -108,16 +115,21 @@ body {
     float: right;
 }
 
+#stamp-mode {
+    display: none;
+    flex-direction: column;
+}
+
 #stamp-list {
     height: 86vh;
-    display: none;
     flex-grow: 1;
     overflow-y: scroll;
 }
 
-#stamp-list input { 
+#stamp-mode input { 
     width: 90%;
-    margin-left: 5%;
+    margin: 5px 0px;
+    align-self: center;
 }
 
 .stamp {
@@ -137,4 +149,13 @@ body {
     word-wrap: break-word;
     cursor: pointer;
     color: black;
+}
+
+#water-mode {
+    display: none;
+    flex-direction: column;
+}
+
+#water {
+    pointer-events: none;
 }
