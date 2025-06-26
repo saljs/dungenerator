@@ -29,4 +29,12 @@ class SVGView {
         d3map.call(this.zoom.scaleTo, this.svg.scale, [0, 0]);
         d3map.call(this.zoom.translateTo, 0, 0, [x, y]);
     }
+
+    refresh() {
+        const zoom = this.zoom;
+        d3.select("svg").call(zoom.translateBy, 1, 1);
+        setTimeout(() => {
+            d3.select("svg").call(zoom.translateBy, -1, -1);
+        }, 1);
+    }
 }

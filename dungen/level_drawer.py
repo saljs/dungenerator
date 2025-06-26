@@ -89,6 +89,25 @@ class LevelDrawer(ABC):
                     ),
                 ],
             ),
+            svg.Filter(
+                id = "water_filter",
+                elements = [
+                    svg.FeTurbulence(
+                        type = "turbulence",
+                        baseFrequency = "0.03",
+                        numOctaves = 3,
+                        stitchTiles = "stitch",
+                        result = "turbulence",
+                    ),
+                    svg.FeDisplacementMap(
+                        in_ = "SourceGraphic",
+                        in2 = "turbulence",
+                        scale = 35,
+                        xChannelSelector = "R",
+                        yChannelSelector = "G",
+                    ),
+                ],
+            ),
         ]
         bg: List[svg.Element] = [
             svg.Rect(

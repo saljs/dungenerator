@@ -102,8 +102,10 @@ const notesMode = {
         document.getElementById("bg-elements").addEventListener("click", () => {
             mode.deselectRoom();
         }, { signal: mode.eventHandlerSignal });
-        document.querySelector(".map .hall").addEventListener("click", () => {
-            mode.deselectRoom();
+        document.querySelectorAll(".map .hall").forEach((rm) => {
+            rm.addEventListener("click", () => {
+                mode.deselectRoom();
+            });
         }, { signal: mode.eventHandlerSignal });
         document.querySelectorAll(".map .room").forEach((rm) => {
             rm.addEventListener("click", (ev) => {
@@ -111,6 +113,7 @@ const notesMode = {
                 ev.preventDefault();
             }, { signal: mode.eventHandlerSignal });
         });
+        this.deselectRoom();
         document.getElementById("notes-mode").style.display = "flex";
     },
     teardown: function() {
@@ -125,6 +128,7 @@ const notesMode = {
     mouseMove: null,
     keyDown: null,
     keyUp: null,
+    shortcuts: null,
     saveData: function() {
         this.syncRoom();
         const data = Object.fromEntries(
@@ -306,16 +310,15 @@ const stampMode = {
             document.querySelectorAll("#stamps image").forEach((el) => {
                 const stamp = mode.stampToObj(el);
                 stamp.name = stamp.href.split(/[/]/).pop();
-                stamp.href = stamp.href.slice(8);
                 if (!vals.stamps.find((st) => st.href === stamp.href)) {
                     vals.stamps.push(stamp);
                 }
             });
             mode.displayStamps(vals);
         });
+        this.getStamps(null);
     },
     setup: function () {
-        this.getStamps(null);
         addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
         document.getElementById("stamp-mode").style.display = "flex";
     },
@@ -362,6 +365,11 @@ const stampMode = {
             this.eventHandlerSignal = this.abortController.signal;
         }
     },
+    shortcuts: [
+        "q: Click to delete stamps",
+        "r: Rotate current stamp",
+        "Right-click: Place stamp"
+    ],
     saveData: function() {
         const mode = this;
         const data = [];
@@ -417,7 +425,7 @@ const stampMode = {
                 link.dataset.width = stamp.width;
                 link.dataset.height = stamp.height;
                 link.onclick = () => mode.selectStamp(stamp);
-                img.src = "/stamps/" + stamp.href;
+                img.src = stamp.href;
                 img.setAttribute("loading", "lazy");
                 link.appendChild(img);
                 dirEl.appendChild(link);
@@ -434,7 +442,7 @@ const stampMode = {
         stampPointer.setAttributeNS(null, "y", 0);
         stampPointer.setAttributeNS(null, "width", stamp.width);
         stampPointer.setAttributeNS(null, "height", stamp.height);
-        stampPointer.setAttributeNS(null, "href", "/stamps/" + stamp.href);
+        stampPointer.setAttributeNS(null, "href", stamp.href);
         stampPointer.setAttributeNS(null, "opacity", 0.3);
         stampPointer.setAttributeNS(null, "id", "stamp_preview");
         if (prev_stamp) {
@@ -512,19 +520,128 @@ const stampMode = {
 
 const waterMode = {
     name: "Water editor",
-    oneTimeSetup: null,
+    oneTimeSetup: function() {
+        const mode = this;
+        const widthSlider = document.getElementById("water-el-width");
+        widthSlider.addEventListener("change", (ev) => {
+            mode.changeSize(ev.target.value);
+        });
+        document.querySelectorAll("#water-mode input[name='mode']").forEach((el) => {
+            el.addEventListener("change", (ev) => {
+                if (ev.target.value == "add") {
+                    mode.preview.setAttributeNS(null, "fill", "limegreen");
+                }
+                else if (ev.target.value == "remove") {
+                    mode.preview.setAttributeNS(null, "fill", "none");
+                }
+            });
+        });
+    },
     setup: function() {
+        document.getElementById("water-el-width").value = this.currentSize;
+        document.querySelector("#water-mode input[value='add']").checked = true;
+        this.preview = this.showMaskPreview();
         document.getElementById("water-mode").style.display = "flex";
     },
     teardown: function() {
+        this.preview.remove();
+        this.preview = null;
         document.getElementById("water-mode").style.display = "none";
     },
     leftClick: null,
     rightClick: null,
-    mouseMove: null,
-    keyDown: null,
+    mouseMove: function(ev) {
+        this.preview.setAttributeNS(null, "cx", ev.layerX);
+        this.preview.setAttributeNS(null, "cy", ev.layerY);
+    },
+    keyDown: function(ev) {
+        if (ev.key === "w") {
+            const maskMode = document.querySelector("#water-mode input[name='mode']:checked").value;
+            if (maskMode == "add") {
+                this.addToMask();
+            }
+            else if (maskMode == "remove") {
+                this.removeFromMask();
+            }
+        }
+    },
     keyUp: null,
-    saveData: null
+    shortcuts: [
+        "w: Edit water mask",
+    ],
+    saveData: function() {
+        const maskEls = document.querySelectorAll("#water_mask .mask-element");
+        return Array.from(maskEls.entries().map((e) => {
+            const el = e[1];
+            return {
+                x: el.cx.animVal.value,
+                y: el.cy.animVal.value,
+                r: el.r.animVal.value
+            };
+        }));
+    },
+
+    /*
+     * Mode funtions
+     */
+    currentSize: 1,
+    preview: null,
+    showMaskPreview: function() {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const svg = document.querySelector(".map svg g");
+        const waterPrev = document.createElementNS(svg.namespaceURI, "circle");
+        waterPrev.setAttributeNS(null, "id", "water_preview");
+        waterPrev.setAttributeNS(null, "cx", 0);
+        waterPrev.setAttributeNS(null, "cy", 0);
+        waterPrev.setAttributeNS(null, "filter", "url(#water_filter)");
+        waterPrev.setAttributeNS(null, "r", (scale * this.currentSize) / 2);
+        waterPrev.setAttributeNS(null, "opacity", 0.35);
+        waterPrev.setAttributeNS(null, "fill", "limegreen");
+        waterPrev.style.pointerEvents = "none";
+        svg.appendChild(waterPrev);
+        return waterPrev;
+    },
+    addToMask: function() {
+        const maskEls = document.querySelectorAll("#water_mask .mask-element");
+        const x = this.preview.cx.animVal.value;
+        const y = this.preview.cy.animVal.value;
+        const radius = this.preview.r.animVal.value;
+        const dup = maskEls.entries().map((e) => {
+            const el = e[1];
+            const dist = Math.hypot(x - el.cx.animVal.value, y - el.cy.animVal.value);
+            return dist < radius / 2;
+        }).reduce((a, b) => a || b, false);
+        if (!dup) {
+            const svg = document.getElementById("water_mask");
+            const maskEl = document.createElementNS(svg.namespaceURI, "circle");
+            maskEl.setAttributeNS(null, "cx", x);
+            maskEl.setAttributeNS(null, "cy", y);
+            maskEl.setAttributeNS(null, "filter", "url(#water_filter)");
+            maskEl.setAttributeNS(null, "r", radius);
+            maskEl.setAttributeNS(null, "fill", "white");
+            maskEl.classList.add("mask-element");
+            svg.appendChild(maskEl);
+            markPageDirty();
+        }
+    },
+    removeFromMask: function() {
+        const maskEls = document.querySelectorAll("#water_mask .mask-element");
+        const x = this.preview.cx.animVal.value;
+        const y = this.preview.cy.animVal.value;
+        maskEls.forEach((el) => {
+            const dist = Math.hypot(x - el.cx.animVal.value, y - el.cy.animVal.value);
+            if (dist < el.r.animVal.value) {
+                el.parentNode.removeChild(el);
+                el.remove();
+                markPageDirty();
+            }
+        });
+    },
+    changeSize: function(factor) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        this.preview.setAttributeNS(null, "r", (factor * scale) / 2);
+        this.currentSize = factor;
+    }
 };
 
 
@@ -546,7 +663,7 @@ document.addEventListener("DOMContentLoaded", function() {
         modeSelect.appendChild(op);
     });
     modeSelect.addEventListener("change", (ev) => {
-        if (currentMode && currentMode.teardown) {
+        if (currentMode.teardown) {
             currentMode.teardown();
         }
         currentMode = allModes[modeSelect.selectedIndex];
@@ -576,31 +693,20 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Handlers for mode map interaction
     const leftClickHandler = (ev) => {
-        if (currentMode && currentMode.leftClick) {
+        if (currentMode.leftClick) {
             currentMode.leftClick(ev);
         }
     };
     const rightClickHandler = (ev) => {
-        if (currentMode && currentMode.rightClick) {
+        if (currentMode.rightClick) {
             currentMode.rightClick(ev);
         }
     };
     const moveHandler = (ev) => {
-        if (currentMode && currentMode.mouseMove) {
+        if (currentMode.mouseMove) {
             currentMode.mouseMove(ev);
         }
     };
-    document.addEventListener("keydown", (ev) => {
-        if (currentMode && currentMode.keyDown) {
-            currentMode.keyDown(ev);
-        }
-    });
-    document.addEventListener("keyup", (ev) => {
-        if (currentMode && currentMode.keyUp) {
-            currentMode.keyUp(ev);
-        }
-    });
-
     // Add click-to-drag handler to map
     const svg = new SVGView(
         leftClickHandler,
@@ -610,6 +716,23 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("zoom_to_fit_btn").onclick = () => {
         svg.zoomToExtents();
     };
+
+    // Add keyboard interactions
+    document.addEventListener("keydown", (ev) => {
+        if (ev.key == "?" && currentMode.shortcuts) {
+            alert("Keyboard actions:\n" + currentMode.shortcuts.join("\n"));
+        }
+        else if (currentMode.keyDown) {
+            currentMode.keyDown(ev);
+            svg.refresh();
+        }
+    });
+    document.addEventListener("keyup", (ev) => {
+        if (currentMode.keyUp) {
+            currentMode.keyUp(ev);
+            svg.refresh();
+        }
+    });
 
     // Add hanlder for map view button
     const dungeon = document.querySelector("body").dataset.dungeon;
@@ -638,9 +761,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                rooms: notesMode.saveData ? notesMode.saveData() : null,
-                stamps: stampMode.saveData ? stampMode.saveData() : null,
-                water: waterMode.saveData ? waterMode.saveData() : null
+                rooms: notesMode.saveData(),
+                stamps: stampMode.saveData(),
+                water: waterMode.saveData()
             })
         }).then((r) => { if (r.ok) markPageClean(); });
     };

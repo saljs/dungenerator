@@ -1,4 +1,4 @@
-from dungen import Encounter, FloorData, DungenSave, StampInfo
+from dungen import Encounter, FloorData, DungenSave, StampInfo, WaterMaskElement
 
 import time
 from pathlib import Path
@@ -7,7 +7,7 @@ from uuid import UUID
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 from .dungeons import DungenList
 from .stamps import StampRepository
-from .maps import render_as_map
+from .maps import render_as_map, render_for_viewer
 
 app = Flask(__name__)
 
@@ -87,7 +87,7 @@ def map_screen(dungeon: str, lvid: int, floorid: int):
         dungen_name = dungeon,
         floors = d.floor_count(lvid),
         scale = d.scale,
-        img = f.img,
+        img = render_for_viewer(f.img, d.scale),
     )
 
 @app.route("/<dungeon>/export/<int:lvid>/<int:floorid>")
@@ -169,6 +169,7 @@ def update_floor(dungeon: str, lvid: int, floorid: int):
         f[roomId] = info
     start = time.time()
     f.set_stamps([StampInfo(**s) for s in request.json.get("stamps", [])])
+    f.set_water_mask([WaterMaskElement(**e) for e in request.json.get("water", [])])
     d.set_floor(lvid, floorid, f)
     end = time.time()
     if end - start > app.config["WARN_SECS"]:

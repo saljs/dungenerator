@@ -29,6 +29,12 @@ class StampInfo:
         centerY = self.y + (self.height / 2)
         return [ svg.Rotate(self.angle, centerX, centerY) ]
 
+@dataclass
+class WaterMaskElement:
+    x: int
+    y: int
+    r: int
+
 
 class FloorData:
     """Takes an `svg.SVG` and provides methods to access info from it."""
@@ -91,6 +97,22 @@ class FloorData:
         	]) 
         else:
             raise AttributeError("Stamps element not in floor image")
+
+    def set_water_mask(self, circles: List[WaterMaskElement]):
+        """Sets the water layer mask, overwriting current content."""
+        if remove_children(self.img, "water_mask", "mask-element"):
+        	append_children(self.img, "water_mask", [
+        	    svg.Circle(
+        	        cx = c.x,
+        	        cy = c.y,
+                    r = c.r,
+                    fill = "white",
+                    filter = "url(#water_filter)",
+                    class_ = ["mask-element"],
+        	    ) for c in circles
+        	]) 
+        else:
+            raise AttributeError("Water element not in floor image")
 
 
 class DungenSave:

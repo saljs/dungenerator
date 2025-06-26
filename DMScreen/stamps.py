@@ -25,7 +25,7 @@ class Stamp:
         return {
             "width": w,
             "height": h,
-            "href": self.href,
+            "href": f"/stamps/{self.href}",
             "name": self.name,
         }
 

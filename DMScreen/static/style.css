@@ -91,11 +91,17 @@ body {
     max-height: 50%;
     margin: 0.5em;
     padding: 5px;
-    border: 1px solid;
-    background-color: #fff;
+    border: 2px solid rgb(140 140 140);
+    background-color: #fafafa;
     flex-grow: 1;
     overflow-y: scroll;
     display: inline-block;
+}
+
+#room_attrs form label {
+    margin: 10px 5px;
+    border: 2px solid rgb(140 140 140);
+    padding: 3px;
 }
 
 #encounter {
@@ -135,7 +141,7 @@ body {
 .stamp {
     padding: 1em;
     margin: 0.2em;
-    border: 0.2em solid;
+    border: 0.2em solid rgb(140 140 140);
     width: 20vw;
 }
 

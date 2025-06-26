@@ -5,7 +5,7 @@ function set_light_mask(maskEl, x, y, width, height, scale) {
     if (light_radius > 0) {
         //change light radius and draw
         const r = light_radius_options[light_radius] * scale;
-        maskEl.setAttributeNS(null, "fill", "url(#light-gradient)");
+        maskEl.setAttributeNS(null, "fill", "url(#light_gradient)");
         maskEl.setAttributeNS(null, "x", x - r);
         maskEl.setAttributeNS(null, "y", y - r);
         maskEl.setAttributeNS(null, "width", r * 2);
@@ -21,12 +21,12 @@ function set_light_mask(maskEl, x, y, width, height, scale) {
 }
 
 function toggle_shadows(svg) {
-    const fg = svg.querySelector("#fg-elements");
+    const fg = document.getElementById("fg-elements");
     if (fg.getAttribute("filter")) {
         fg.setAttributeNS(null, "filter", "");
     }
     else {
-        fg.setAttributeNS(null, "filter", "url(#shadow)");
+        fg.setAttributeNS(null, "filter", "url(#shadow_filter)");
     }
 }
 
@@ -42,52 +42,14 @@ function update_url_hash(svg) {
 
 document.addEventListener("DOMContentLoaded", function() {
     const svg = document.querySelector(".map svg");
-    const defs = svg.querySelector("defs");
-    // Add in initial mask
-    const grad = document.createElementNS(svg.namespaceURI, "radialGradient");
-    grad.setAttributeNS(null, "id", "light-gradient");
-    grad.innerHTML = `
-        <stop offset="0%" stop-color="white" />
-        <stop offset="80%" stop-color="white" />
-        <stop offset="100%" stop-color="black" />`;
-    defs.appendChild(grad);
-    
-    const mask = document.createElementNS(svg.namespaceURI, "mask");
-    const svgWidth = svg.clientWidth;
-    const svgHeight = svg.clientHeight;
-    mask.setAttributeNS(null, "id", "light-mask");
-    mask.innerHTML = `
-        <rect
-            fill="black"
-            x=0 y=0
-            width="120%" height="120%"
-        />
-        <rect
-            id="light-mask-rect"
-            fill="white"
-            x=0 y=0
-            width="${svgWidth}" height="${svgHeight}"
-        />`;
-    defs.appendChild(mask);
-    svg.querySelector("g").setAttributeNS(null, "mask", "url(#light-mask)");
-    // Add in shadow filter
     const scale = parseInt(document.querySelector(".map").dataset.scale);
-    const shadow = document.createElementNS(svg.namespaceURI, "filter");
-    shadow.setAttributeNS(null, "id", "shadow");
-    shadow.innerHTML = `
-      <feFlood flood-color="black"/>
-      <feComposite operator="out" in2="SourceGraphic"/>
-      <feGaussianBlur stdDeviation="${scale / 4}"/>
-      <feOffset dx="${scale / 10}" dy="${scale / 10}" result="drop-shadow"/>
-      <feComposite operator="atop" in2="SourceGraphic"/>`;
-    defs.appendChild(shadow);
-                        
+
     // Add in click-to-drag handler
-    const light = document.getElementById("light-mask-rect");
+    const light = document.getElementById("light_mask_rect");
     const lightHandler = (x, y) => {
         set_light_mask(
             light,
-            x, y, svgWidth, svgHeight,
+            x, y, svg.width.animVal.value, svg.height.animVal.value,
             scale,
         );
     };
@@ -106,7 +68,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 lightHandler(ev.layerX, ev.layerY);
             }
             update_url_hash(svg_view.svg);
-        });
+        }
+    );
 
     // Add in keyboard actions
     document.addEventListener("keydown", (ev) => {

@@ -33,6 +33,8 @@ def random_walk(start: Point, end: Point, vlen: float, rng: Random) -> List[Poin
         )
         path.append(curr)
         curr = next_point
+    if len(path) == 0:
+        return [start]
     return path
 
 def random_point_in_triangle(p1: Point, p2: Point, p3: Point, rng: Random) -> Point:
@@ -78,7 +80,7 @@ class OrganicRoomDrawer(LevelDrawer):
             room.location.x + (room.width / 2),
             room.location.y + (room.height / 2),
         )
-        num_int_points = 6
+        num_int_points = 16
         points: List[Point] = []
         first_point = None
         last_point = None
@@ -104,6 +106,7 @@ class OrganicRoomDrawer(LevelDrawer):
             stroke = border,
             stroke_width = scale * 2,
             paint_order = "stroke",
+            stroke_linejoin = "bevel",
         )
 
     @staticmethod
@@ -132,4 +135,5 @@ class OrganicRoomDrawer(LevelDrawer):
            fill = "transparent",
            stroke = fill,
            stroke_width = scale * width,
+           stroke_linejoin = "bevel",
        )

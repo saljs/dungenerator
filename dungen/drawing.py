@@ -32,15 +32,20 @@ def append_children(
     if before is not None:
         indeces = [i for i, el in enumerate(parent.elements) if el.id == before]
         if len(indeces) == 1:
-            index = indeces[0]
+            index, = indeces
     parent.elements[index:index] = elements
     return True
 
-def remove_children(img: svg.SVG, id: str) -> bool:
+def remove_children(img: svg.SVG, id: str, clsfilt: Optional[str] = None) -> bool:
     parent = find_element(img, id)
     if parent is None:
         return False
-    parent.elements = None
+    if clsfilt is not None and parent.elements is not None:
+        parent.elements = [
+            l for l in parent.elements if l.class_ is not None and clsfilt not in l.class_ # type: ignore[attr-defined]
+        ]
+    else:
+        parent.elements = None
     return True
 
 def strip_ids(elements: Optional[Sequence[svg.Element]]) -> Optional[List[svg.Element]]:

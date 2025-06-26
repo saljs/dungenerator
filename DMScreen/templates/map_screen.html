@@ -22,7 +22,7 @@
             {% if floorid > 1 %}
              data-floor_up="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid - 1 }}"
             {% endif %}
-            {% if floorid + 1 >= floors %}
+            {% if floorid + 1 <= floors %}
              data-floor_down="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid + 1 }}"
             {% endif %}
         >
