@@ -93,21 +93,25 @@ class StampRepository:
             stamps += sr.search_stamps(key)
         return stamps
 
-    def in_svg(self, img: svg.SVG) -> List[Stamp]:
-        """Return a list of stamps used in a SVG image."""
-        stamp_root = find_element(img, "stamps")
-        if stamp_root is None or stamp_root.elements is None:
-            return []
-        # Remove the first 8 chars "/stamps/" from href
-        hrefs = set([el.href[8:] for el in stamp_root.elements]) # type: ignore
-        print(hrefs)
-        def find_stamp_hrefs(sr: "StampRepository") -> List[Stamp]:
-            m = [s for s in sr.stamps if s.href in hrefs]
-            print(m)
-            for sd in sr.dirs:
-                m += find_stamp_hrefs(sd)
-            return m
-        return find_stamp_hrefs(self)
+    def to_dict(self) -> dict:
+        """Returns the cache as a dict for serialization."""
+        return {
+            "root": str(self.root),
+            "path": str(self.path),
+            "dirs": [sr.to_dict() for sr in self.dirs],
+            "stamps": [
+                {"href": s.href, "name": s.name, "orig_path": str(s.orig_path)} for s in self.stamps
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, in_dict: dict) -> "StampRepository":
+        return cls(
+            root = Path(str(in_dict.get("root"))),
+            path = Path(str(in_dict.get("path"))),
+            dirs = [cls.from_dict(sr) for sr in in_dict.get("dirs", [])],
+            stamps = [Stamp(**s) for s in in_dict.get("stamps", [])],
+        )
 
     @classmethod
     def from_path(cls, path: Union[Path|str]) -> "StampRepository":

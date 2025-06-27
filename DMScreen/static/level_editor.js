@@ -7,7 +7,7 @@ const svgStyles = {
     "highlight_traps": "#rooms .trap { stroke: yellow; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
     "highlight_shops": "#rooms .shop { stroke: orange; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
     "highlight_treasure": "#rooms .treasure { stroke: chartreuse; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_stairs_up": "#rooms .up { stroke: royalblue; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_stairs_up": "#rooms .up { stroke: red; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
     "highlight_stairs_down": "#rooms .down { stroke: coral; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
 };
 

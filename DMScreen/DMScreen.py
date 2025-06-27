@@ -1,5 +1,6 @@
 from dungen import Encounter, FloorData, DungenSave, StampInfo, WaterMaskElement
 
+import json
 import time
 from pathlib import Path
 from typing import Optional, Tuple
@@ -178,15 +179,28 @@ def update_floor(dungeon: str, lvid: int, floorid: int):
 
 def set_app_config(
     dungen_files: Path,
-    stamps_path: str,
+    stamps_path: Path,
+    stamps_cache: Optional[Path] = None,
     books_url: Optional[str] = None,
     warn_duration: float = 1.0,
 ) -> Optional[Flask]:
     """Return the DMScreen app with parameters set."""
-    app.config["DUNGEONS"] = DungenList(dungen_files)
 
     start = time.time()
-    app.config["STAMP_REPO"] = StampRepository.from_path(stamps_path)
+    app.config["DUNGEONS"] = DungenList(dungen_files)
+    if stamps_cache is not None:
+        cache_file = Path(stamps_cache).resolve()
+        if cache_file.exists():
+            with cache_file.open() as cache_json:
+                cached = json.load(cache_json)
+                app.config["STAMP_REPO"] = StampRepository.from_dict(cached)
+        else:
+            app.config["STAMP_REPO"] = StampRepository.from_path(stamps_path)
+            with cache_file.open("w") as cache_json:
+                json.dump(app.config["STAMP_REPO"].to_dict(), cache_json)
+
+    else:
+        app.config["STAMP_REPO"] = StampRepository.from_path(stamps_path)
     end = time.time()
     if end - start > warn_duration:
         app.logger.warn(f"Startup took {end - start} seconds.")
@@ -212,6 +226,12 @@ def main_func():
         help = "Relative path to stamps directory.",
     )
     parser.add_argument(
+        "--stamps-cache",
+        type = Path,
+        help = "Path to cache file for stamp repository.",
+        default = None,
+    )
+    parser.add_argument(
         "--books-url",
         type = str,
         help = "Url pattern for source books. Will replace $b with book name and $p with page.",
@@ -232,7 +252,7 @@ def main_func():
     args = parser.parse_args()
 
     app.logger.setLevel(logging.DEBUG)
-    set_app_config(args.dungens_path, args.stamps_path, args.books_url, args.warn_duration)
+    set_app_config(args.dungens_path, args.stamps_path, args.stamps_cache, args.books_url, args.warn_duration)
     app.run(port = args.port)
 
 if __name__ == "__main__":
