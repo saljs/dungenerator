@@ -1,7 +1,7 @@
 import svg
 
 from typing import List
-from dungen import find_element, append_children, remove_children
+from dungen.drawing import find_element, append_children, remove_children
 
 def render_as_map(img: svg.SVG, scale: int) -> str:
     fg_filter = svg.Filter(

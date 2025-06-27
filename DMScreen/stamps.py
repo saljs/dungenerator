@@ -7,7 +7,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 from typing import Dict, List, Optional, Union, Tuple
 
-from dungen import append_children, find_element, remove_children
+from dungen.drawing import append_children, find_element, remove_children
 
 SEARCH_CUTOFF_RATIO = 90
 

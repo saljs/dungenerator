@@ -19,13 +19,13 @@ namespaces = false
 
 [project]
 name = "dungenerator"
-version = "0.1.2"
+version = "0.1.5"
 authors = [
   { name="Sal Skare", email="salskare@gmail.com" },
 ]
 description = "Generate random dungeon maps from templates."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
