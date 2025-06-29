@@ -11,7 +11,6 @@ import sys
 
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, cast
-from uuid import UUID, uuid4
 
 from .dunspec import DunSpec
 from .dungensave import DungenSave
@@ -165,7 +164,7 @@ def main_func():
             room.data["room-note"] += "There are stairs down here.\n"
         savefile.set_floor(last_level, last_floor_num, last_floor)
         stairs_up = [Point.from_dict(room.data) for r in selected_rooms] # type: ignore[arg-type]
-    
+
     starting_levels = savefile.levels
     for i in progressbar.progressbar(range(1, spec.level_count + 1)):
         i += starting_levels

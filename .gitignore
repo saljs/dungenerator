@@ -1,5 +1,6 @@
-# Visual assets
-assets/
+# Test files
+*.json
+*.dng
 
 # Python artifacts
 build/

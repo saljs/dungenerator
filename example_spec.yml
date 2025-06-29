@@ -1,0 +1,124 @@
+floor_count: 8
+width: 1000
+height: 1000
+scale: 200
+entrances: 1
+floor_types:
+  uniform:
+    floors:
+      lower: 2
+      upper: 5
+    rooms:
+      lower: 400
+      upper: 800
+    room_width:
+      lower: 5
+      upper: 40
+    room_height:
+      lower: 5
+      upper: 40
+    room_alg: uniform
+    room_shape: rect
+    hall_density: 0.02
+    hall_width: 1
+    trap_chance: 0.15
+    monster_chance: 0.12
+    shop_chance: 0.01
+    treasure_chance: 0.08
+    stairs_up:
+      lower: 1
+      upper: 4
+    stairs_down:
+      lower: 1
+      upper: 4
+    probability: 0.4
+    textures:
+      background: assets/Colors/gray.svg
+      room: assets/Colors/red.svg
+      hallway: assets/Colors/red.svg
+      room_wall: assets/Colors/blue.svg
+      hall_wall: assets/Colors/blue.svg
+      water: assets/Colors/aqua.svg
+  cluster:
+    floors:
+      lower: 2
+      upper: 3
+    rooms:
+      lower: 400
+      upper: 800
+    room_width:
+      lower: 5
+      upper: 40
+    room_height:
+      lower: 5
+      upper: 40
+    room_alg: clustered
+    room_shape: rect
+    hall_density: 0
+    hall_width: 4
+    trap_chance: 0.15
+    monster_chance: 0.12
+    shop_chance: 0.01
+    treasure_chance: 0.08
+    stairs_up:
+      lower: 1
+      upper: 4
+    stairs_down:
+      lower: 1
+      upper: 4
+    probability: 0.3
+    textures:
+      background: assets/Colors/gray.svg
+      room: assets/Colors/red.svg
+      hallway: assets/Colors/red.svg
+      room_wall: assets/Colors/blue.svg
+      hall_wall: assets/Colors/blue.svg
+      water: assets/Colors/aqua.svg
+  linear:
+    rooms:
+      lower: 400
+      upper: 800
+    room_width:
+      lower: 5
+      upper: 40
+    room_height:
+      lower: 5
+      upper: 40
+    room_alg: linear
+    room_shape: rect
+    hall_density: 0
+    hall_width: 2
+    trap_chance: 0.15
+    monster_chance: 0.12
+    shop_chance: 0.01
+    treasure_chance: 0.08
+    stairs_up:
+      lower: 1
+      upper: 4
+    stairs_down:
+      lower: 1
+      upper: 4
+    probability: 0.3
+    textures:
+      background: assets/Colors/gray.svg
+      room: assets/Colors/red.svg
+      hallway: assets/Colors/red.svg
+      room_wall: assets/Colors/blue.svg
+      hall_wall: assets/Colors/blue.svg
+      water: assets/Colors/aqua.svg
+textures:
+  test-cluster:
+    background: assets/Colors/gray.svg
+    room: assets/Colors/red.svg
+    hallway: assets/Colors/red.svg
+    room_wall: assets/Colors/blue.svg
+    hall_wall: assets/Colors/blue.svg
+    water: assets/Colors/aqua.svg
+  test-linear:
+    background: assets/Colors/gray.svg
+    room: assets/Colors/red.svg
+    hallway: assets/Colors/red.svg
+    room_wall: assets/Colors/blue.svg
+    hall_wall: assets/Colors/blue.svg
+    water: assets/Colors/aqua.svg
+    background_grid: true
