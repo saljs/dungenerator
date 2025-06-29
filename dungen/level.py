@@ -7,7 +7,7 @@ from .room_generators import LevelSpec, RoomFactory
 
 class Level:
     """A level is a collection of rooms and hallways."""
-    
+
     def __init__(
         self,
         spec: LevelSpec,
@@ -21,7 +21,7 @@ class Level:
         self.rooms = tuple(RoomFactory(spec, up, towers))
         self.hallways = Connections(self.rooms)
         self.hallways.prune(spec.hall_density)
-    
+
     def __repr__(self) -> str:
         s = f"Level: {self.width}x{self.height} ({len(self.rooms)} rooms)\n"
         rc = 0

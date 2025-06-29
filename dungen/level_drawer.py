@@ -7,6 +7,7 @@ import base64
 import mimetypes
 from random import Random, random
 from typing import Collection, List, Optional
+from urllib.parse import quote
 
 from .connections import Connections, Hallway
 from .drawing import append_children, find_element, remove_children, strip_ids
@@ -20,6 +21,7 @@ class FillPatterns:
     hallway: List[svg.Element]
     room_wall: List[svg.Element]
     hall_wall: List[svg.Element]
+    water: List[svg.Element]
 
 class LevelDrawer(ABC):
     """A LevelDrawer implements svg drawing for rooms and hallways."""
@@ -68,6 +70,44 @@ class LevelDrawer(ABC):
                 patternUnits = "userSpaceOnUse",
                 elements = fill.hall_wall,
             ),
+            svg.Pattern(
+                id = "water_pattern",
+                width = scale, height = scale,
+                patternUnits = "userSpaceOnUse",
+                elements = fill.water,
+            ),
+            svg.Mask(
+                id = "water_mask",
+                width = width, height = height,
+                elements = [
+                    svg.Rect(
+                        x = 0,
+                        y = 0,
+                        width = width,
+                        height = height,
+                        fill = "black",
+                    ),
+                ],
+            ),
+            svg.Filter(
+                id = "water_filter",
+                elements = [
+                    svg.FeTurbulence(
+                        type = "turbulence",
+                        baseFrequency = "0.03",
+                        numOctaves = 3,
+                        stitchTiles = "stitch",
+                        result = "turbulence",
+                    ),
+                    svg.FeDisplacementMap(
+                        in_ = "SourceGraphic",
+                        in2 = "turbulence",
+                        scale = 35,
+                        xChannelSelector = "R",
+                        yChannelSelector = "G",
+                    ),
+                ],
+            ),
         ]
         bg: List[svg.Element] = [
             svg.Rect(
@@ -97,7 +137,6 @@ class LevelDrawer(ABC):
                     "none",
                     "url(#room_wall_pattern)",
                     Random(rng_seed),
-                    set_ids = False,
                 ),
                 id = "room_walls",
             ),
@@ -120,8 +159,20 @@ class LevelDrawer(ABC):
                     "url(#room_pattern)",
                     "none",
                     Random(rng_seed),
+                    set_ids = True,
                 ),
                 id = "rooms",
+            ),
+            svg.G(
+                elements = [
+                    svg.Rect(
+                        x = 0, y = 0,
+                        width = width, height = height,
+                        fill = "url(#water_pattern)",
+                        mask = "url(#water_mask)",
+                    ),
+                ],
+                id="water",
             ),
             svg.G(id = "stamps"),
         ]
@@ -144,17 +195,48 @@ class LevelDrawer(ABC):
 
     @staticmethod
     @abstractmethod
-    def draw_rooms(
-        rooms: Collection[Room], scale: int, fill: str, border: str, rng: Random, set_ids: bool = True
-    ) -> List[svg.Element]:
+    def draw_room(
+        room: Room, scale: int, fill: str, border: str, rng: Random
+    ) -> svg.Element:
         ...
 
     @staticmethod
     @abstractmethod
-    def draw_hallways(
-        hallways: Connections, scale: int, fill: str, width: int, rng: Random
-    ) -> List[svg.Element]:
+    def draw_hallway(
+        hallway: Hallway, scale: int, fill: str, width: int, rng: Random
+    ) -> svg.Element:
         ...
+
+    @classmethod
+    def draw_rooms(
+        cls, rooms: Collection[Room], scale: int, fill: str, border: str, rng: Random, set_ids: bool = False
+    ) -> List[svg.Element]:
+        ret = []
+        for r in rooms:
+            room = cls.draw_room(r, scale, fill, border, rng)
+            if set_ids:
+                room.id = f"room-{r.id}"
+                room.class_ = ["room"] + r.tags # type: ignore[attr-defined]
+                room.data = {
+                    "room-note": quote(r.note),
+                    "room-encounter": quote("{\"items\":[]}"),
+                    "x": r.location.x,
+                    "y": r.location.y,
+                }
+            ret.append(room)
+        return ret
+
+    @classmethod
+    def draw_hallways(
+        cls, hallways: Connections, scale: int, fill: str, width: int, rng: Random
+    ) -> List[svg.Element]:
+        ret = []
+        for h in sorted(hallways, reverse = True):
+            hall = cls.draw_hallway(h, scale, fill, width, rng)
+            hall.class_ = ["hall"] # type: ignore[attr-defined]
+            ret.append(hall)
+        return ret
+
 
 def create_pattern(fp: Path, scale: int, grid: bool = False) -> List[svg.Element]:
     mime, _ = mimetypes.guess_type(fp)
@@ -187,6 +269,7 @@ def paths_to_patterns(
     hallway: Path,
     room_wall: Path,
     hall_wall: Path,
+    water: Path,
     scale: int,
     background_grid: bool,
     room_grid: bool,
@@ -199,6 +282,7 @@ def paths_to_patterns(
         create_pattern(hallway, scale, grid=hall_grid),
         create_pattern(room_wall, scale),
         create_pattern(hall_wall, scale),
+        create_pattern(water, scale, grid=room_grid),
     )
 
 def handle_no_floors(

@@ -22,7 +22,7 @@ body {
     overflow-y: scroll;
 }
 
-.buttons a {
+.buttons a,select {
     flex-grow: 1;
     padding: 1em;
     background-color: #153a5e;
@@ -32,6 +32,7 @@ body {
     font-size: 1.2em;
     text-align: center;
     align-content: center;
+    border: none;
 }
 .buttons a:hover {
     background-color: gray;
@@ -79,16 +80,28 @@ body {
     flex-wrap: wrap;
 }
 
+#notes-mode {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
 #room_info {
     width: 20vw;
     max-height: 50%;
     margin: 0.5em;
     padding: 5px;
-    border: 1px solid;
-    background-color: #fff;
+    border: 2px solid rgb(140 140 140);
+    background-color: #fafafa;
     flex-grow: 1;
     overflow-y: scroll;
     display: inline-block;
+}
+
+#room_attrs form label {
+    margin: 10px 5px;
+    border: 2px solid rgb(140 140 140);
+    padding: 3px;
 }
 
 #encounter {
@@ -108,22 +121,27 @@ body {
     float: right;
 }
 
+#stamp-mode {
+    display: none;
+    flex-direction: column;
+}
+
 #stamp-list {
     height: 86vh;
-    display: none;
     flex-grow: 1;
     overflow-y: scroll;
 }
 
-#stamp-list input { 
+#stamp-mode input { 
     width: 90%;
-    margin-left: 5%;
+    margin: 5px 0px;
+    align-self: center;
 }
 
 .stamp {
     padding: 1em;
     margin: 0.2em;
-    border: 0.2em solid;
+    border: 0.2em solid rgb(140 140 140);
     width: 20vw;
 }
 
@@ -137,4 +155,13 @@ body {
     word-wrap: break-word;
     cursor: pointer;
     color: black;
+}
+
+#water-mode {
+    display: none;
+    flex-direction: column;
+}
+
+#water {
+    pointer-events: none;
 }

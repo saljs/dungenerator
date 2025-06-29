@@ -7,7 +7,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 from typing import Dict, List, Optional, Union, Tuple
 
-from dungen import append_children, find_element, remove_children
+from dungen.drawing import append_children, find_element, remove_children
 
 SEARCH_CUTOFF_RATIO = 90
 
@@ -25,7 +25,7 @@ class Stamp:
         return {
             "width": w,
             "height": h,
-            "href": self.href,
+            "href": f"/stamps/{self.href}",
             "name": self.name,
         }
 
@@ -93,21 +93,25 @@ class StampRepository:
             stamps += sr.search_stamps(key)
         return stamps
 
-    def in_svg(self, img: svg.SVG) -> List[Stamp]:
-        """Return a list of stamps used in a SVG image."""
-        stamp_root = find_element(img, "stamps")
-        if stamp_root is None or stamp_root.elements is None:
-            return []
-        # Remove the first 8 chars "/stamps/" from href
-        hrefs = set([el.href[8:] for el in stamp_root.elements]) # type: ignore
-        print(hrefs)
-        def find_stamp_hrefs(sr: "StampRepository") -> List[Stamp]:
-            m = [s for s in sr.stamps if s.href in hrefs]
-            print(m)
-            for sd in sr.dirs:
-                m += find_stamp_hrefs(sd)
-            return m
-        return find_stamp_hrefs(self)
+    def to_dict(self) -> dict:
+        """Returns the cache as a dict for serialization."""
+        return {
+            "root": str(self.root),
+            "path": str(self.path),
+            "dirs": [sr.to_dict() for sr in self.dirs],
+            "stamps": [
+                {"href": s.href, "name": s.name, "orig_path": str(s.orig_path)} for s in self.stamps
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, in_dict: dict) -> "StampRepository":
+        return cls(
+            root = Path(str(in_dict.get("root"))),
+            path = Path(str(in_dict.get("path"))),
+            dirs = [cls.from_dict(sr) for sr in in_dict.get("dirs", [])],
+            stamps = [Stamp(**s) for s in in_dict.get("stamps", [])],
+        )
 
     @classmethod
     def from_path(cls, path: Union[Path|str]) -> "StampRepository":
@@ -121,33 +125,3 @@ class StampRepository:
                 stamps = sorted([Stamp.from_file(f, path) for f in files if f.is_file()], key=lambda f: f.name),
             )
         return walk_dirs(path)
-
-@dataclass
-class StampInfo:
-    x: int
-    y: int
-    height: int
-    width: int
-    href: str
-    angle: int
-
-    @property
-    def transform(self) -> Optional[List[svg.Transform]]:
-        if self.angle == 0:
-            return None
-        centerX = self.x + (self.width / 2)
-        centerY = self.y + (self.height / 2)
-        return [ svg.Rotate(self.angle, centerX, centerY) ]
-
-def set_stamps(stamps: List[StampInfo], image: svg.SVG):
-    if remove_children(image, "stamps"):
-        append_children(image, "stamps", [
-            svg.Image(
-                x = s.x,
-                y = s.y,
-                width = s.width,
-                height = s.height,
-                href = s.href,
-                transform = s.transform,
-            ) for s in stamps
-        ])

@@ -18,15 +18,15 @@
     </head>
     <body class="container">
         <div class="map" 
-             data-scale="{{ dungeon.scale }}"
-            {% if floorid - 1 in dungeon.levels[lvid] %}
+             data-scale="{{ scale }}"
+            {% if floorid > 1 %}
              data-floor_up="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid - 1 }}"
             {% endif %}
-            {% if floorid + 1 in dungeon.levels[lvid] %}
+            {% if floorid + 1 <= floors %}
              data-floor_down="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid + 1 }}"
             {% endif %}
         >
-            {{ dungeon.images[lvid][floorid] | safe }}
+            {{ img | safe }}
         </div>
     </body>
 </html>

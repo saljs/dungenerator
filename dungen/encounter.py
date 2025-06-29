@@ -20,3 +20,17 @@ class Encounter:
     def from_dict(cls, dictIn: Dict[str, Any]) -> "Encounter":
         items = [Enemy(**i) for i in dictIn["items"]]
         return cls(items)
+
+    def to_dict(self) -> Dict[str, List[Dict[str, Any]]]:
+        return {
+            "items": [
+                {
+                    "name": i.name,
+                    "initiative": i.initiative,
+                    "hp": i.hp,
+                    "xp": i.xp,
+                    "book": i.book,
+                    "book_page": i.book_page,
+                } for i in self.items
+            ],
+        }
