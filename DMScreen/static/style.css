@@ -165,3 +165,8 @@ body {
 #water {
     pointer-events: none;
 }
+
+#stamp-spray-mode {
+    display: none;
+    flex-direction: column;
+}

@@ -321,6 +321,10 @@ const stampMode = {
     setup: function () {
         addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
         document.getElementById("stamp-mode").style.display = "flex";
+        this.getStamps(this.currentFolder);
+        if (this.currentStamp) {
+            this.selectStamp(this.currentStamp);
+        }
     },
     teardown: function () {
         const prev_stamp = document.getElementById("stamp_preview");
@@ -381,12 +385,18 @@ const stampMode = {
     /*
      * Mode functions
      */
+    currentFolder: null,
+    currentStamp: null,
     getStamps: function(path) {
         const mode = this;
         const stamp_list = document.getElementById("stamp-list");
         let apiURL = "/api/stamprepo";
         if (path) {
             apiURL += "/" + path;
+            this.currentFolder = path;
+        }
+        else {
+            this.currentFolder = "";
         }
         fetch(apiURL).then((r) => r.json()).then((sr) => {
             mode.displayStamps(sr);
@@ -449,28 +459,35 @@ const stampMode = {
             prev_stamp.remove();
         }
         svg.appendChild(stampPointer);
+        this.currentStamp = stamp;
     },
     dropStamp: function() {
         const svg = document.querySelector(".map svg");
         const svg_stamps = document.getElementById("stamps");
         const stampPointer = document.getElementById("stamp_preview");
         if (stampPointer) {
-            const stamp = document.createElementNS(svg.namespaceURI, "image");
-            const angle = this.getStampAngle(stampPointer);
-            const x = stampPointer.x.animVal.value;
-            const y = stampPointer.y.animVal.value;
-            const width = stampPointer.width.animVal.value;
-            const height = stampPointer.height.animVal.value;
-            stamp.setAttributeNS(null, "x", x);
-            stamp.setAttributeNS(null, "y", y);
-            stamp.setAttributeNS(null, "width", width);
-            stamp.setAttributeNS(null, "height", height);
-            stamp.setAttributeNS(null, "href", stampPointer.href.animVal);
-            stamp.setAttributeNS(null, "transform",
-                `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
+            const stamp = this.createStamp(
+                stampPointer.x.animVal.value,
+                stampPointer.y.animVal.value,
+                this.getStampAngle(stampPointer)
+            );
             svg_stamps.appendChild(stamp);
             markPageDirty();
         }
+    },
+    createStamp: function(x, y, angle) {
+        const svg = document.querySelector(".map svg");
+        const stamp = document.createElementNS(svg.namespaceURI, "image");
+        const width = this.currentStamp.width;
+        const height = this.currentStamp.height;
+        stamp.setAttributeNS(null, "x", x);
+        stamp.setAttributeNS(null, "y", y);
+        stamp.setAttributeNS(null, "width", width);
+        stamp.setAttributeNS(null, "height", height);
+        stamp.setAttributeNS(null, "href", this.currentStamp.href);
+        stamp.setAttributeNS(null, "transform",
+            `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
+        return stamp;
     },
     rotateStamp: function() {
         const stampPointer = document.getElementById("stamp_preview");
@@ -524,7 +541,7 @@ const waterMode = {
         const mode = this;
         const widthSlider = document.getElementById("water-el-width");
         widthSlider.addEventListener("change", (ev) => {
-            mode.changeSize(ev.target.value);
+            mode.changeSize(parseInt(ev.target.value));
         });
         document.querySelectorAll("#water-mode input[name='mode']").forEach((el) => {
             el.addEventListener("change", (ev) => {
@@ -532,7 +549,7 @@ const waterMode = {
                     mode.preview.setAttributeNS(null, "fill", "limegreen");
                 }
                 else if (ev.target.value == "remove") {
-                    mode.preview.setAttributeNS(null, "fill", "none");
+                    mode.preview.setAttributeNS(null, "fill", "red");
                 }
             });
         });
@@ -541,11 +558,13 @@ const waterMode = {
         document.getElementById("water-el-width").value = this.currentSize;
         document.querySelector("#water-mode input[value='add']").checked = true;
         this.preview = this.showMaskPreview();
+        addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
         document.getElementById("water-mode").style.display = "flex";
     },
     teardown: function() {
         this.preview.remove();
         this.preview = null;
+        removeStylefromSVG("img-no-interaction");
         document.getElementById("water-mode").style.display = "none";
     },
     leftClick: null,
@@ -564,9 +583,19 @@ const waterMode = {
                 this.removeFromMask();
             }
         }
+        const widthSlider = document.getElementById("water-el-width");
+        if (ev.key === "k" && this.currentSize < widthSlider.max) {
+            this.changeSize(this.currentSize + 1);
+        }
+        else if (ev.key === "j" && this.currentSize > widthSlider.min) {
+            this.changeSize(this.currentSize - 1);
+        }
+        widthSlider.value = this.size;
     },
     keyUp: null,
     shortcuts: [
+        "k: Increase area",
+        "j: Decrease area",
         "w: Edit water mask",
     ],
     saveData: function() {
@@ -644,14 +673,145 @@ const waterMode = {
     }
 };
 
+const sprayMode = {
+    name: "Spray stamps",
+    oneTimeSetup: function() {
+        const mode = this;
+        const widthSlider = document.getElementById("stamp-spray-el-width");
+        const densitySlider = document.getElementById("stamp-spray-el-density");
+        const undoButton = document.getElementById("stamp-spray-undo");
+        widthSlider.addEventListener("change", (ev) => {
+            mode.changeSize(parseInt(ev.target.value));
+        });
+        densitySlider.addEventListener("change", (ev) => {
+            mode.density = parseFloat(ev.target.value);
+        });
+        undoButton.addEventListener("click", () => {
+            mode.undoLast();
+        });
+    },
+    setup: function() {
+        document.getElementById("stamp-spray-el-width").value = this.size;
+        document.querySelector("#water-mode input[value='add']").checked = true;
+        this.preview = this.showAreaPreview();
+        addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
+        if (stampMode.currentStamp) {
+            document.getElementById("stamp-spray-stamp-label")
+                .value = stampMode.currentStamp.href;
+        }
+        else {
+            document.getElementById("stamp-spray-stamp-label")
+                .value = "Error: stamp not selected!";
+        }
+        document.getElementById("stamp-spray-mode").style.display = "flex";
+    },
+    teardown: function() {
+        this.preview.remove();
+        this.preview = null;
+        removeStylefromSVG("img-no-interaction");
+        document.getElementById("stamp-spray-mode").style.display = "none";
+    },
+    leftClick: null,
+    rightClick: function(ev) {
+        ev.preventDefault();
+        this.sprayStamps();
+    },
+    mouseMove: function(ev) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const r = (this.size / 2) * scale;
+        this.preview.setAttributeNS(null, "x", ev.layerX - r);
+        this.preview.setAttributeNS(null, "y", ev.layerY - r);
+    },
+    keyDown: function(ev) {
+        const widthSlider = document.getElementById("stamp-spray-el-width");
+        if (ev.key === "k" && this.size < widthSlider.max) {
+            this.changeSize(this.size + 1);
+        }
+        else if (ev.key === "j" && this.size > widthSlider.min) {
+            this.changeSize(this.size - 1);
+        }
+        widthSlider.value = this.size;
+    },
+    keyUp: null,
+    shortcuts: [
+        "k: Increase area",
+        "j: Decrease area",
+        "Right-click: Place stamps"
+    ],
+    saveData: null,
+
+    /*
+     * Mode funtions
+     */
+    preview: null,
+    density: 0.1,
+    size: 5,
+    undoBuffer: [],
+    showAreaPreview: function() {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const svg = document.querySelector(".map svg g");
+        const areaPrev = document.createElementNS(svg.namespaceURI, "rect");
+        areaPrev.setAttributeNS(null, "id", "area_preview");
+        areaPrev.setAttributeNS(null, "x", 0);
+        areaPrev.setAttributeNS(null, "y", 0);
+        areaPrev.setAttributeNS(null, "width", this.size * scale);
+        areaPrev.setAttributeNS(null, "height", this.size * scale);
+        areaPrev.setAttributeNS(null, "opacity", 0.35);
+        areaPrev.setAttributeNS(null, "fill", "limegreen");
+        areaPrev.style.pointerEvents = "none";
+        svg.appendChild(areaPrev);
+        return areaPrev;
+    },
+    changeSize: function(size) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        this.preview.setAttributeNS(null, "width",  size * scale);
+        this.preview.setAttributeNS(null, "height",  size * scale);
+        this.size = size;
+    },
+    sprayStamps: function() {
+        if (stampMode.currentStamp) {
+            const svg = document.querySelector(".map svg g");
+            const scale = parseInt(document.querySelector(".map").dataset.scale);
+            const area = (scale * this.size) * (scale * this.size);
+            const boxX = this.preview.x.animVal.value;
+            const boxY = this.preview.y.animVal.value;
+            const stampArea = stampMode.currentStamp.width
+                * stampMode.currentStamp.height;
+            const numStamps = (area * this.density) / stampArea;
+            const svg_stamps = document.getElementById("stamps");
+            this.undoBuffer = [];
+            for (let i = 0; i < numStamps; i++) {
+                const x = Math.floor(
+                    Math.random() * (this.size * scale - stampMode.currentStamp.width)
+                ) + boxX;
+                const y = Math.floor(
+                    Math.random() * (this.size * scale - stampMode.currentStamp.height)
+                 ) + boxY;
+                const angle = Math.floor(Math.random() * 8) * 45;
+                const stamp = stampMode.createStamp(x, y, angle);
+                svg_stamps.appendChild(stamp);
+                this.undoBuffer.push(stamp);
+            }
+            markPageDirty();
+            document.getElementById("stamp-spray-undo").disabled = false;
+        }
+    },
+    undoLast: function() {
+        if (this.undoBuffer) {
+            this.undoBuffer.forEach((st) => st.remove());
+            this.undoBuffer = [];
+            markPageDirty();
+            document.getElementById("stamp-spray-undo").disabled = true;
+        }
+    }
+};
 
 /*
  * Setup event listeners
  */
-
 document.addEventListener("DOMContentLoaded", function() {
     // Setup mode selection
-    const allModes = [notesMode, stampMode, waterMode];
+    const allModes = [notesMode, stampMode, waterMode, sprayMode];
     let currentMode = null;
     const modeSelect = document.getElementById("mode_select");
     allModes.forEach((mode) => {
@@ -719,7 +879,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Add keyboard interactions
     document.addEventListener("keydown", (ev) => {
-        if (ev.key == "?" && currentMode.shortcuts) {
+        if ((ev.key === "?" || ev.key === "F1") && currentMode.shortcuts) {
             alert("Keyboard actions:\n" + currentMode.shortcuts.join("\n"));
         }
         else if (currentMode.keyDown) {

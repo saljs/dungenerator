@@ -130,6 +130,26 @@
                             <input type="radio" name="mode" value="remove" />
                         </label>
                     </div>
+                    <div id="stamp-spray-mode">
+                        <h3>Stamp spray options:</h3>
+                        <label>
+                            Selected stamp:
+                            <br/>
+                            <input type="text" disabled="true" id="stamp-spray-stamp-label"/>
+                        </label>
+                            Size:
+                            <br/>
+                            <input id="stamp-spray-el-width" type="range" min="1" max="50" value="5" step="1"/>
+                        </label>
+                        <label>
+                            Stamp density:
+                            <br/>
+                            <input id="stamp-spray-el-density" type="range" min="0.025" max="1" value="0.1" step="0.025"/>
+                        </label>
+                        <label>
+                            <input id="stamp-spray-undo" type="button" disabled="true" value="Undo" />
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
