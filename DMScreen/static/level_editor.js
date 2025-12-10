@@ -339,8 +339,17 @@ const stampMode = {
         ev.preventDefault();
         this.dropStamp();
     },
-    mouseMove: function(ev) {
-        this.moveStamp(ev.layerX, ev.layerY);
+    mouseMove: function(x, y) {
+        const stampPointer = document.getElementById("stamp_preview");
+        if (stampPointer !== null) {
+            const angle = this.getStampAngle(stampPointer);
+            const width = stampPointer.width.animVal.value;
+            const height = stampPointer.height.animVal.value;
+            stampPointer.setAttributeNS(null, "x", x);
+            stampPointer.setAttributeNS(null, "y", y);
+            stampPointer.setAttributeNS(null, "transform",
+                `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
+        }
     },
     keyDown: function(ev) {
         if (ev.key === "q") {
@@ -501,18 +510,6 @@ const stampMode = {
                 `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
         }
     },
-    moveStamp: function(x, y) {
-        const stampPointer = document.getElementById("stamp_preview");
-        if (stampPointer !== null) {
-            const angle = this.getStampAngle(stampPointer);
-            const width = stampPointer.width.animVal.value;
-            const height = stampPointer.height.animVal.value;
-            stampPointer.setAttributeNS(null, "x", x);
-            stampPointer.setAttributeNS(null, "y", y);
-            stampPointer.setAttributeNS(null, "transform",
-                `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
-        }
-    },
     getStampAngle: function(stamp) {
         const transform = stamp.transform.animVal;
         if (transform.numberOfItems === 0) {
@@ -569,9 +566,9 @@ const waterMode = {
     },
     leftClick: null,
     rightClick: null,
-    mouseMove: function(ev) {
-        this.preview.setAttributeNS(null, "cx", ev.layerX);
-        this.preview.setAttributeNS(null, "cy", ev.layerY);
+    mouseMove: function(x, y) {
+        this.preview.setAttributeNS(null, "cx", x);
+        this.preview.setAttributeNS(null, "cy", y);
     },
     keyDown: function(ev) {
         if (ev.key === "w") {
@@ -716,11 +713,11 @@ const sprayMode = {
         ev.preventDefault();
         this.sprayStamps();
     },
-    mouseMove: function(ev) {
+    mouseMove: function(x, y) {
         const scale = parseInt(document.querySelector(".map").dataset.scale);
         const r = (this.size / 2) * scale;
-        this.preview.setAttributeNS(null, "x", ev.layerX - r);
-        this.preview.setAttributeNS(null, "y", ev.layerY - r);
+        this.preview.setAttributeNS(null, "x", x - r);
+        this.preview.setAttributeNS(null, "y", y - r);
     },
     keyDown: function(ev) {
         const widthSlider = document.getElementById("stamp-spray-el-width");
@@ -864,7 +861,15 @@ document.addEventListener("DOMContentLoaded", function() {
     };
     const moveHandler = (ev) => {
         if (currentMode.mouseMove) {
-            currentMode.mouseMove(ev);
+            const z = d3.zoomTransform(document.querySelector(".map svg"));
+            // Find SVG coord of top left corner
+            const originX = -z.x / z.k;
+            const originY = -z.y / z.k;
+            // Add scaled mouse coords
+            const x = originX + (ev.offsetX / z.k);
+            const y = originY + (ev.offsetY / z.k);
+
+            currentMode.mouseMove(x, y);
         }
     };
     // Add click-to-drag handler to map

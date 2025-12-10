@@ -35,7 +35,7 @@ dependencies = [
     "PyYAML>=6.0.0",
     "imagesize>=1.4.0",
     "progressbar2>=4.5.0",
-    "svg.py>=1.6.0",
+    "svg.py>=1.9.0",
     "RapidFuzz>=3.13.0",
 ]
 
