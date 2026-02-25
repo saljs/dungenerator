@@ -113,7 +113,6 @@ const notesMode = {
                 ev.preventDefault();
             }, { signal: mode.eventHandlerSignal });
         });
-        this.deselectRoom();
         document.getElementById("notes-mode").style.display = "flex";
     },
     teardown: function() {
@@ -153,7 +152,7 @@ const notesMode = {
      */
     currentRoom: null,
     modifiedRooms: new Map(),
-    selectRoom: function(uid) {
+    selectRoom: function(uid, setHistory = true) {
         const tb = document.getElementById("room_info");
         const room = document.getElementById("room-" + uid);
         const books_url = document.querySelector("body").dataset.bookurl;
@@ -161,10 +160,12 @@ const notesMode = {
         const levelId = document.querySelector(".map").dataset.lvid;
         const floorId = document.querySelector(".map").dataset.floorid;
 
-        this.deselectRoom();
+        this.deselectRoom(setHistory);
         addStyletoSVG("selected-room",
             "#room-" + uid + "{ stroke: aqua; stroke-width: $$px; }");
-        window.location.hash = uid;
+        if (setHistory) {
+            window.location.hash = uid;
+        }
 
         tb.contentEditable = "plaintext-only";
         document.querySelectorAll("form input").forEach((input) => {
@@ -174,8 +175,10 @@ const notesMode = {
             `/${dungeon}/encounter/${levelId}/${floorId}/${uid}`;
 
         let noteStr = decodeURIComponent(room.dataset.roomNote).trim().replaceAll(/\n/g, "<br>")
-            .replaceAll(/(https?:\/\/[^ ]*)/ig,
-                '<a href="$&" onmousedown="window.open(this.href, \'_blank\').focus()">$&</a>');
+            .replaceAll(/\[(https?:\/\/[^ ]*)\]/ig,
+                '<a href="$1" onmousedown="window.open(this.href, \'_blank\').focus()">$&</a>')
+            .replaceAll(/#(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})/ig,
+                '<a href="#" onmousedown="notesMode.selectRoom(\'$1\')">$&</a>')
         if (books_url) {
             noteStr = noteStr.replaceAll(/([A-Za-z0-9]{3,5})pg(\d+)/g, 
                 (match, book, page) => '<a href="'
@@ -198,13 +201,15 @@ const notesMode = {
         };
         this.setEncounterItems(this.currentRoom.encounter);
     },
-    deselectRoom: function() {
+    deselectRoom: function(setHistory = true) {
         this.syncRoom();
         removeStylefromSVG("selected-room");
         const tb = document.getElementById("room_info");
         tb.innerText = "";
         tb.contentEditable = false;
-        window.location.hash = "";
+        if (setHistory) {
+            window.location.hash = "";
+        }
         document.querySelectorAll("#notes-mode form input").forEach((input) => {
             input.disabled = true;
         });
@@ -941,7 +946,21 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Check if there is a room selected in the URL
-    if (window.location.hash) {
-        notesMode.selectRoom(window.location.hash.slice(1));
-    }
+    const navToRoom = (e) => {
+        if (e && e.navigationType === "traverse"
+            && e.destination.url.indexOf("#") !== -1) {
+            const uid = e.destination.url.split("#")[1];
+            if (uid) {
+                notesMode.selectRoom(uid, setHistory = false);
+            }
+            else {
+                notesMode.deselectRoom(setHistory = false);
+            }
+        }
+    };
+    navToRoom({ 
+        "navigationType": "traverse",
+        "destination": { "url": window.location.href }
+    });
+    navigation.addEventListener("navigate", navToRoom);
 });
