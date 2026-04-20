@@ -144,7 +144,6 @@ const notesMode = {
                 ];
             })
         );
-        this.modifiedRooms.clear();
         return data;
     },
     /*
@@ -935,7 +934,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 stamps: stampMode.saveData(),
                 water: waterMode.saveData()
             })
-        }).then((r) => { if (r.ok) markPageClean(); });
+        }).then((r) => {
+            if (r.ok) {
+                notesMode.modifiedRooms.clear();
+                markPageClean();
+            }
+        });
     };
     window.addEventListener("beforeunload", (e) => {
         if (!isPageDirty()) {

@@ -6,9 +6,11 @@ from pathlib import Path
 from typing import Optional, Tuple
 from uuid import UUID
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
+from dungen import RoomInfo
 from .dungeons import DungenList
 from .stamps import StampRepository
 from .maps import render_as_map, render_for_viewer
+from .search import search_room_notes
 
 app = Flask(__name__)
 
@@ -91,6 +93,23 @@ def map_screen(dungeon: str, lvid: int, floorid: int):
         img = render_for_viewer(f.img, d.scale),
     )
 
+@app.route("/<dungeon>/search")
+def search_dungeon(dungeon:str):
+    d = app.config["DUNGEONS"][dungeon]
+    q = request.args.get("q")
+    cutoff = int(request.args.get("cutoff", 50))
+    if d is None:
+        abort(404)
+    start = time.time()
+    results = search_room_notes(d, q, cutoff)
+    end = time.time()
+    return render_template(
+        "search_results.html",
+        query = q,
+        results = results,
+        search_duration = end - start,
+    )   
+
 @app.route("/<dungeon>/export/<int:lvid>/<int:floorid>")
 def map_export(dungeon: str, lvid: int, floorid: int):
     d, f = check_get_floor(dungeon, lvid, floorid)
@@ -166,8 +185,11 @@ def update_floor(dungeon: str, lvid: int, floorid: int):
     d, f = check_get_floor(dungeon, lvid, floorid)
     for rid, info in request.json.get("rooms", {}).items():
         roomId = UUID(rid)
-        info["encounter"] = Encounter.from_dict(info["encounter"])
-        f[roomId] = info
+        f[roomId] = RoomInfo(
+            notes = info["notes"],
+            encounter = Encounter.from_dict(info["encounter"]),
+            attributes = info["attributes"],
+        )
     start = time.time()
     f.set_stamps([StampInfo(**s) for s in request.json.get("stamps", [])])
     f.set_water_mask([WaterMaskElement(**e) for e in request.json.get("water", [])])

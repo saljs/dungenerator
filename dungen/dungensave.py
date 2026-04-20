@@ -35,11 +35,31 @@ class WaterMaskElement:
     y: int
     r: int
 
+@dataclass
+class RoomInfo:
+    notes: str
+    encounter: Encounter
+    attributes: List[str]
+
+    @classmethod
+    def from_element(cls, room: svg.Element) -> "RoomInfo":
+        if room.data is None:
+            raise AttributeError(f"Room {room.id} is missing required attributes")
+        return cls(
+            notes = unquote(room.data["room-note"]),
+            encounter = Encounter.from_dict(json.loads(unquote(room.data["room-encounter"]))),
+            attributes = [c for c in room.class_], # type: ignore[attr-defined]
+        )
+
 
 class FloorData:
     """Takes an `svg.SVG` and provides methods to access info from it."""
     def __init__(self, floor: svg.SVG):
         self.img = floor
+
+    def __iter__(self):
+        self.__rooms = iter(self.room_elements())
+        return self
 
     def __getroom(self, roomId: UUID) -> svg.Element:
         room = find_element(self.img, f"room-{roomId}")
@@ -47,28 +67,24 @@ class FloorData:
             raise AttributeError(f"Room {roomId} not found in floor")
         return room
 
-    def __getitem__(self, roomId: UUID) -> Dict[str, Union[str, Encounter, List[str]]]:
+    def __getitem__(self, roomId: UUID) -> RoomInfo:
         room = self.__getroom(roomId)
-        if room.data is None:
-            raise AttributeError(f"Room {roomId} is missing required attributes")
-        return {
-            "notes": unquote(room.data["room-note"]),
-            "encounter": Encounter.from_dict(json.loads(unquote(room.data["room-encounter"]))),
-            "attributes": [c for c in room.class_], # type: ignore[attr-defined]
-        }
+        return RoomInfo.from_element(room)
 
-    def __setitem__(self, roomId: UUID, value: Dict[str, Union[str, Encounter, List[str]]]):
-        notes = cast(str, value["notes"])
-        encounter = cast(Encounter, value["encounter"])
-        attributes = cast(List[str], value["attributes"])
+    def __setitem__(self, roomId: UUID, value: RoomInfo):
         room = self.__getroom(roomId)
         if room.data is None:
             raise AttributeError(f"Room {roomId} is missing required attributes")
-        room.data["room-note"] = quote(notes)
-        room.data["room-encounter"] = quote(json.dumps(encounter.to_dict(), separators=(',', ':')))
+        room.data["room-note"] = quote(value.notes)
+        room.data["room-encounter"] = quote(json.dumps(value.encounter.to_dict(), separators=(',', ':')))
         editable_attrs = ["monsters", "treasure", "trap", "shop"]
         room.class_ = [a for a in room.class_ if a not in editable_attrs] # type: ignore[attr-defined]
-        room.class_ += [a for a in editable_attrs if a in attributes] # type: ignore[attr-defined]
+        room.class_ += [a for a in editable_attrs if a in value.attributes] # type: ignore[attr-defined]
+
+    def __next__(self) -> Tuple[str, RoomInfo]:
+        room = next(self.__rooms)
+        roomId = room.id[5:] # type: ignore[index]
+        return (roomId, RoomInfo.from_element(room))
 
     def room_elements(self, fltr: Optional[str] = None) -> List[svg.Element]:
         """Returns the SVG room elements, with optional class filter."""
@@ -119,6 +135,7 @@ class DungenSave:
     """Savefile definition for DunGen files."""
     def __init__(self, file: Path, scale: Optional[int] = None):
         self.filepath = file
+        self.__save_count = 0
         self.__scale = scale
         self.__levels = None
         if not self.filepath.exists():
@@ -126,6 +143,9 @@ class DungenSave:
                 raise AttributeError("Must supply scale when creating a new savefile")
             self.__create_tables(scale)
             self.__levels = 0
+
+    def __hash__(self):
+        return hash(self.filepath) + self.__save_count
 
     @contextmanager
     def __open_tables(self) -> Iterator[sqlite3.Connection]:
@@ -154,6 +174,7 @@ class DungenSave:
                 + "SELECT RAISE(FAIL, 'Property is non-editable');\nEND"
             )
             conn.commit()
+            self.__save_count += 1
 
     @property
     def scale(self) -> int:
@@ -173,6 +194,15 @@ class DungenSave:
                 self.__levels, = cur.fetchone()
         return self.__levels
 
+    @property
+    def all_floors(self) -> Iterator[Tuple[int, int, FloorData]]:
+        for lvl in range(1, self.levels + 1):
+            for floor in range(1, self.floor_count(lvl) + 1):
+                data = self.get_floor(lvl, floor)
+                if data is None:
+                    raise AttributeError(f"Cannot find SVG data for level {lvl} floor {floor}.")
+                yield (lvl, floor, data)
+
     def add_level(self, lvlid: int, floors: Dict[int, svg.SVG], note: str):
         """Adds a new level to the table under the previous level."""
         with self.__open_tables() as conn:
@@ -181,6 +211,7 @@ class DungenSave:
             for i, img in floors.items():
                 cur.execute("INSERT INTO floors(lvlid, floorid, img) VALUES(?, ?, ?)", (lvlid, i, pickle.dumps(img)))
             conn.commit()
+            self.__save_count += 1
             self.__levels = None
 
     def floor_count(self, lvlid: int) -> int:
@@ -211,6 +242,7 @@ class DungenSave:
                 (pickle.dumps(floor.img), lvlid, floorid),
             )
             conn.commit()
+            self.__save_count += 1
 
     def set_level_note(self, lvlid: int, note: str):
         """Sets the level note for the level specified."""
@@ -224,6 +256,7 @@ class DungenSave:
                 (note, lvlid) for lvlid, note in notes.items()
             ])
             conn.commit()
+            self.__save_count += 1
 
     def get_level_notes(self) -> Dict[int, str]:
         """Gets all notes for each level."""

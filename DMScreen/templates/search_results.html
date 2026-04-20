@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen: Search reults - {{ query }}</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <script src="/static/search.js"></script>
+        <style>
+            .search-results-list {
+                width: 40%;
+                height: 100vh;
+                overflow-y: scroll;
+                padding-right: 10px;
+            }
+            .search-result:nth-child(even) {
+                background: #dad5c1;
+            }
+            .results-count {
+                font-style: italic;
+                font-size: 10pt;
+                margin-bottom: 15px;
+            }
+            .search-result {
+                border: 2px solid rgb(160 160 160);
+                padding: 5px;
+                margin-bottom: 15px;
+            }
+            .search-result.selected {
+                border: 4px solid #495c2a;
+            }
+            .search-result > h3 {
+                margin: 5px 0;
+            }
+            .search-result-text {
+                height: 156px;
+                overflow: clip;
+            }
+            .search-result-details {
+                width: 60%;
+             }
+            .search-result-rank {
+                font-style: italic;
+                font-size: 10pt;
+                margin-bottom: 5px;
+            }
+            #search-full-result {
+                white-space: pre-wrap;
+            }
+            ::highlight(search-term-match) {
+                background-color: magenta;
+            }
+        </style>
+    </head>
+    <body class="container" data-query="{{ query }}">
+        <div class="container cols search-results-list">
+            <h1>Search results - {{ query }}</h1>
+            <div class="results-count">
+                Search returned {{ results|length }} results in
+                {{ '%0.2f'|format(search_duration|float) }} seconds.
+            </div>
+            {% for item, rank, _ in results %}
+                <div class="search-result"
+                    data-level="{{ item.level }}"
+                    data-floor="{{ item.floor }}"
+                    data-roomid="{{ item.roomId }}"
+                >
+                    <h3>Location: Level {{ item.level }} floor {{ item.floor }}</h3>
+                    <div class="search-result-rank">
+                        {{ '%0.2f'|format(rank|float) }}% match
+                    </div>
+                    <div class="search-result-text">{{ item.note }}</div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="container cols stretch search-result-details">
+            <h2 id="search-full-result-title"></h2>
+            <pre id="search-full-result"></pre>
+            <a id="result-link" href="#">Go to room</a>
+        </div>
+    </body>
+</html>
