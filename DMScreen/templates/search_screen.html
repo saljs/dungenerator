@@ -1,0 +1,24 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>DMScreen search</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <style>
+            body {
+                margin-top: 20% !important;
+            }
+            .search-bar {
+                padding: 10px;
+            }
+        </style>
+    </head>
+    <body class="container cols">
+        <h2>Search {{ dungen_name }}:</h2>
+        <form action="{{ search_url }}">
+            <input class="search-bar" type="text"
+                name="q" placeholder="Search dungeon..." autofocus />
+        </form>
+    </body>
+</html>

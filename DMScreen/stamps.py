@@ -1,10 +1,10 @@
 import os
 import imagesize
+import rapidfuzz
 import re
 import svg
 from dataclasses import dataclass
 from pathlib import Path
-from rapidfuzz import fuzz
 from typing import Dict, List, Optional, Union, Tuple
 
 from dungen.drawing import append_children, find_element, remove_children

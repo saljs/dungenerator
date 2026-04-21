@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 from uuid import UUID
-from flask import Flask, Response, abort, jsonify, render_template, request, send_file
+from flask import Flask, Response, abort, jsonify, url_for, render_template, request, send_file
 from dungen import RoomInfo
 from .dungeons import DungenList
 from .stamps import StampRepository
@@ -47,6 +47,7 @@ def level_index(dungeon: str):
         levels = range(1, d.levels + 1),
         floors = { i: d.floor_count(i) for i in range(1, d.levels + 1) },
         notes = d.get_level_notes(),
+        search_url = url_for("search_dungeon", dungeon = dungeon),
     )
 
 @app.route("/<dungeon>/level/<int:lvid>/<int:floorid>")
@@ -103,6 +104,12 @@ def search_dungeon(dungeon:str):
     start = time.time()
     results = search_room_notes(d, q, cutoff)
     end = time.time()
+    if len(results) == 0:
+        return render_template(
+            "search_screen.html",
+            dungen_name = dungeon,
+            search_url = url_for("search_dungeon", dungeon = dungeon),
+        )
     return render_template(
         "search_results.html",
         query = q,

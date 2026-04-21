@@ -15,6 +15,10 @@
         {% endfor %}
         </div>
         <div class="container cols stretch">
+            <form action="{{ search_url }}">
+                <input class="search-bar" type="text"
+                    name="q" placeholder="Search dungeon..." />
+            </form>
             <div class="notes stretch">
             {% for lvid, note in notes.items() %}
                 <textarea spellcheck="true" 

@@ -54,6 +54,10 @@
     <body class="container" data-query="{{ query }}">
         <div class="container cols search-results-list">
             <h1>Search results - {{ query }}</h1>
+            <form action="">
+                <input class="search-bar" type="text"
+                    name="q" placeholder="Search dungeon..." autofocus />
+            </form>
             <div class="results-count">
                 Search returned {{ results|length }} results in
                 {{ '%0.2f'|format(search_duration|float) }} seconds.
