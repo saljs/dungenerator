@@ -122,7 +122,7 @@ class FloorData:
     def set_water_mask(self, elements: List[WaterMaskElement]):
         """Sets the water layer mask, overwriting current content."""
         if remove_children(self.img, "water_mask", "mask-element"):
-            new_els = []
+            new_els: list[svg.Element] = []
             for e in elements:
                 if e.tag == "rect":
                     new_els.append(svg.Rect(
