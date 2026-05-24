@@ -586,9 +586,8 @@ const waterMode = {
             this.preview.setAttributeNS(null, "cy", y);
         } else {
             const w = parseFloat(this.preview.getAttribute("width"));
-            const grid = w;
-            const cx = Math.round(x / grid) * grid;
-            const cy = Math.round(y / grid) * grid;
+            const cx = Math.round(x / w) * w;
+            const cy = Math.round(y / w) * w;
             this.preview.setAttributeNS(null, "x", cx - w / 2);
             this.preview.setAttributeNS(null, "y", cy - w / 2);
         }
