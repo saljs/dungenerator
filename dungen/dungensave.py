@@ -31,9 +31,14 @@ class StampInfo:
 
 @dataclass
 class WaterMaskElement:
-    x: int
-    y: int
-    r: int
+    tag: str = "circle"
+    cx: float = 0
+    cy: float = 0
+    r: float = 0
+    x: float = 0
+    y: float = 0
+    width: float = 0
+    height: float = 0
 
 @dataclass
 class RoomInfo:
@@ -114,19 +119,26 @@ class FloorData:
         else:
             raise AttributeError("Stamps element not in floor image")
 
-    def set_water_mask(self, circles: List[WaterMaskElement]):
+    def set_water_mask(self, elements: List[WaterMaskElement]):
         """Sets the water layer mask, overwriting current content."""
         if remove_children(self.img, "water_mask", "mask-element"):
-        	append_children(self.img, "water_mask", [
-        	    svg.Circle(
-        	        cx = c.x,
-        	        cy = c.y,
-                    r = c.r,
-                    fill = "white",
-                    filter = "url(#water_filter)",
-                    class_ = ["mask-element"],
-        	    ) for c in circles
-        	]) 
+            new_els: list[svg.Element] = []
+            for e in elements:
+                if e.tag == "rect":
+                    new_els.append(svg.Rect(
+                        x = e.x, y = e.y,
+                        width = e.width, height = e.height,
+                        fill = "white",
+                        class_ = ["mask-element"],
+                    ))
+                else:
+                    new_els.append(svg.Circle(
+                        cx = e.cx, cy = e.cy, r = e.r,
+                        fill = "white",
+                        filter = "url(#water_filter)",
+                        class_ = ["mask-element"],
+                    ))
+            append_children(self.img, "water_mask", new_els)
         else:
             raise AttributeError("Water element not in floor image")
 

@@ -3,12 +3,12 @@
  */
 
 const svgStyles = {
-    "highlight_monsters": "#rooms .monsters { stroke: magenta; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_traps": "#rooms .trap { stroke: yellow; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_shops": "#rooms .shop { stroke: orange; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_treasure": "#rooms .treasure { stroke: chartreuse; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_stairs_up": "#rooms .up { stroke: red; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
-    "highlight_stairs_down": "#rooms .down { stroke: coral; stroke-width: $$px; animation: blinker 0.5s linear infinite; }",
+    "highlight_monsters": "#rooms .monsters { stroke: magenta; stroke-width: $$px; animation: blinker 1s linear infinite; }",
+    "highlight_traps": "#rooms .trap { stroke: yellow; stroke-width: $$px; animation: blinker 1s linear infinite; }",
+    "highlight_shops": "#rooms .shop { stroke: orange; stroke-width: $$px; animation: blinker 1s linear infinite; }",
+    "highlight_treasure": "#rooms .treasure { stroke: chartreuse; stroke-width: $$px; animation: blinker 1s linear infinite; }",
+    "highlight_stairs_up": "#rooms .up { stroke: red; stroke-width: $$px; animation: blinker 1s linear infinite; }",
+    "highlight_stairs_down": "#rooms .down { stroke: coral; stroke-width: $$px; animation: blinker 1s linear infinite; }",
 };
 
 const roomAttributes = ["monsters", "treasure", "trap", "shop"];
@@ -554,10 +554,20 @@ const waterMode = {
                 }
             });
         });
+        document.querySelectorAll("#water-mode input[name='water_shape']").forEach((el) => {
+            el.addEventListener("change", (ev) => {
+                mode.currentShape = ev.target.value;
+                const sizeSlider = document.getElementById("water-el-width");
+                mode.preview.remove();
+                mode.preview = mode.showMaskPreview();
+                mode.changeSize(parseInt(sizeSlider.value));
+            });
+        });
     },
     setup: function() {
         document.getElementById("water-el-width").value = this.currentSize;
         document.querySelector("#water-mode input[value='add']").checked = true;
+        document.querySelector("#water-mode input[name='water_shape'][value='" + this.currentShape + "']").checked = true;
         this.preview = this.showMaskPreview();
         addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
         document.getElementById("water-mode").style.display = "flex";
@@ -571,8 +581,16 @@ const waterMode = {
     leftClick: null,
     rightClick: null,
     mouseMove: function(x, y) {
-        this.preview.setAttributeNS(null, "cx", x);
-        this.preview.setAttributeNS(null, "cy", y);
+        if (this.currentShape === "circle") {
+            this.preview.setAttributeNS(null, "cx", x);
+            this.preview.setAttributeNS(null, "cy", y);
+        } else {
+            const w = parseFloat(this.preview.getAttribute("width"));
+            const cx = Math.round(x / w) * w;
+            const cy = Math.round(y / w) * w;
+            this.preview.setAttributeNS(null, "x", cx - w / 2);
+            this.preview.setAttributeNS(null, "y", cy - w / 2);
+        }
     },
     keyDown: function(ev) {
         if (ev.key === "w") {
@@ -582,6 +600,17 @@ const waterMode = {
             }
             else if (maskMode == "remove") {
                 this.removeFromMask();
+            }
+        }
+        if (ev.key === "s") {
+            const radios = document.querySelectorAll("#water-mode input[name='water_shape']");
+            for (let i = 0; i < radios.length; i++) {
+                if (radios[i].checked) {
+                    const next = (i + 1) % radios.length;
+                    radios[next].checked = true;
+                    radios[next].dispatchEvent(new Event("change"));
+                    break;
+                }
             }
         }
         const widthSlider = document.getElementById("water-el-width");
@@ -598,78 +627,151 @@ const waterMode = {
         "k: Increase area",
         "j: Decrease area",
         "w: Edit water mask",
+        "s: Switch shape (circle/square)",
     ],
     saveData: function() {
         const maskEls = document.querySelectorAll("#water_mask .mask-element");
-        return Array.from(maskEls.entries().map((e) => {
-            const el = e[1];
-            return {
-                x: el.cx.animVal.value,
-                y: el.cy.animVal.value,
-                r: el.r.animVal.value
-            };
-        }));
+        return Array.from(maskEls).map((el) => {
+            if (el.tagName === "circle") {
+                return {
+                    tag: "circle",
+                    cx: el.cx.animVal.value,
+                    cy: el.cy.animVal.value,
+                    r: el.r.animVal.value
+                };
+            } else {
+                return {
+                    tag: "rect",
+                    x: el.x.animVal.value,
+                    y: el.y.animVal.value,
+                    width: el.width.animVal.value,
+                    height: el.height.animVal.value
+                };
+            }
+        });
     },
 
     /*
      * Mode funtions
      */
     currentSize: 1,
+    currentShape: "circle",
     preview: null,
     showMaskPreview: function() {
         const scale = parseInt(document.querySelector(".map").dataset.scale);
         const svg = document.querySelector(".map svg g");
-        const waterPrev = document.createElementNS(svg.namespaceURI, "circle");
+        const isCircle = this.currentShape === "circle";
+        const tag = isCircle ? "circle" : "rect";
+        const waterPrev = document.createElementNS(svg.namespaceURI, tag);
         waterPrev.setAttributeNS(null, "id", "water_preview");
-        waterPrev.setAttributeNS(null, "cx", 0);
-        waterPrev.setAttributeNS(null, "cy", 0);
-        waterPrev.setAttributeNS(null, "filter", "url(#water_filter)");
-        waterPrev.setAttributeNS(null, "r", (scale * this.currentSize) / 2);
         waterPrev.setAttributeNS(null, "opacity", 0.35);
         waterPrev.setAttributeNS(null, "fill", "limegreen");
         waterPrev.style.pointerEvents = "none";
+        if (isCircle) {
+            waterPrev.setAttributeNS(null, "cx", 0);
+            waterPrev.setAttributeNS(null, "cy", 0);
+            waterPrev.setAttributeNS(null, "r", (scale * this.currentSize) / 2);
+            waterPrev.setAttributeNS(null, "filter", "url(#water_filter)");
+        } else {
+            const size = scale * this.currentSize;
+            waterPrev.setAttributeNS(null, "x", 0);
+            waterPrev.setAttributeNS(null, "y", 0);
+            waterPrev.setAttributeNS(null, "width", size);
+            waterPrev.setAttributeNS(null, "height", size);
+        }
         svg.appendChild(waterPrev);
         return waterPrev;
     },
     addToMask: function() {
         const maskEls = document.querySelectorAll("#water_mask .mask-element");
-        const x = this.preview.cx.animVal.value;
-        const y = this.preview.cy.animVal.value;
-        const radius = this.preview.r.animVal.value;
-        const dup = maskEls.entries().map((e) => {
-            const el = e[1];
-            const dist = Math.hypot(x - el.cx.animVal.value, y - el.cy.animVal.value);
-            return dist < radius / 2;
+        const svgMask = document.getElementById("water_mask");
+        const isCircle = this.currentShape === "circle";
+        const tag = isCircle ? "circle" : "rect";
+
+        let cx, cy, size;
+        if (isCircle) {
+            cx = this.preview.cx.animVal.value;
+            cy = this.preview.cy.animVal.value;
+            size = this.preview.r.animVal.value;
+        } else {
+            const w = parseFloat(this.preview.getAttribute("width"));
+            const x = parseFloat(this.preview.getAttribute("x"));
+            const y = parseFloat(this.preview.getAttribute("y"));
+            cx = x + w / 2;
+            cy = y + w / 2;
+            size = w / 2;
+        }
+        const dup = Array.from(maskEls).map((el) => {
+            if (el.tagName === "circle") {
+                const dist = Math.hypot(cx - el.cx.animVal.value, cy - el.cy.animVal.value);
+                return dist < el.r.animVal.value;
+            } else {
+                return cx >= el.x.animVal.value
+                    && cx <= el.x.animVal.value + el.width.animVal.value
+                    && cy >= el.y.animVal.value
+                    && cy <= el.y.animVal.value + el.height.animVal.value;
+            }
         }).reduce((a, b) => a || b, false);
         if (!dup) {
-            const svg = document.getElementById("water_mask");
-            const maskEl = document.createElementNS(svg.namespaceURI, "circle");
-            maskEl.setAttributeNS(null, "cx", x);
-            maskEl.setAttributeNS(null, "cy", y);
-            maskEl.setAttributeNS(null, "filter", "url(#water_filter)");
-            maskEl.setAttributeNS(null, "r", radius);
+            const maskEl = document.createElementNS(svgMask.namespaceURI, tag);
+            if (isCircle) {
+                maskEl.setAttributeNS(null, "cx", cx);
+                maskEl.setAttributeNS(null, "cy", cy);
+                maskEl.setAttributeNS(null, "r", size);
+                maskEl.setAttributeNS(null, "filter", "url(#water_filter)");
+            } else {
+                const x = cx - size;
+                const y = cy - size;
+                maskEl.setAttributeNS(null, "x", x);
+                maskEl.setAttributeNS(null, "y", y);
+                maskEl.setAttributeNS(null, "width", size * 2);
+                maskEl.setAttributeNS(null, "height", size * 2);
+            }
             maskEl.setAttributeNS(null, "fill", "white");
             maskEl.classList.add("mask-element");
-            svg.appendChild(maskEl);
+            svgMask.appendChild(maskEl);
             markPageDirty();
         }
     },
     removeFromMask: function() {
         const maskEls = document.querySelectorAll("#water_mask .mask-element");
-        const x = this.preview.cx.animVal.value;
-        const y = this.preview.cy.animVal.value;
+        let cx, cy;
+        if (this.currentShape === "circle") {
+            cx = this.preview.cx.animVal.value;
+            cy = this.preview.cy.animVal.value;
+        } else {
+            const w = parseFloat(this.preview.getAttribute("width"));
+            const x = parseFloat(this.preview.getAttribute("x"));
+            const y = parseFloat(this.preview.getAttribute("y"));
+            cx = x + w / 2;
+            cy = y + w / 2;
+        }
         maskEls.forEach((el) => {
-            const dist = Math.hypot(x - el.cx.animVal.value, y - el.cy.animVal.value);
-            if (dist < el.r.animVal.value) {
+            let hit = false;
+            if (el.tagName === "circle") {
+                const dist = Math.hypot(cx - el.cx.animVal.value, cy - el.cy.animVal.value);
+                hit = dist < el.r.animVal.value;
+            } else {
+                hit = cx >= el.x.animVal.value
+                    && cx <= el.x.animVal.value + el.width.animVal.value
+                    && cy >= el.y.animVal.value
+                    && cy <= el.y.animVal.value + el.height.animVal.value;
+            }
+            if (hit) {
                 el.parentNode.removeChild(el);
-                el.remove();
                 markPageDirty();
             }
         });
     },
     changeSize: function(factor) {
         const scale = parseInt(document.querySelector(".map").dataset.scale);
-        this.preview.setAttributeNS(null, "r", (factor * scale) / 2);
+        if (this.currentShape === "circle") {
+            this.preview.setAttributeNS(null, "r", (factor * scale) / 2);
+        } else {
+            const size = factor * scale;
+            this.preview.setAttributeNS(null, "width", size);
+            this.preview.setAttributeNS(null, "height", size);
+        }
         this.currentSize = factor;
     }
 };
