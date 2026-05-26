@@ -169,6 +169,7 @@ body {
 
 #water {
     pointer-events: none;
+    opacity: 80%;
 }
 
 #stamp-spray-mode {
