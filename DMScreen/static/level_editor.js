@@ -550,7 +550,7 @@ const waterMode = {
                     mode.preview.setAttributeNS(null, "fill", "limegreen");
                 }
                 else if (ev.target.value == "remove") {
-                    mode.preview.setAttributeNS(null, "fill", "red");
+                    mode.preview.setAttributeNS(null, "fill", "transparent");
                 }
             });
         });
@@ -585,11 +585,11 @@ const waterMode = {
             this.preview.setAttributeNS(null, "cx", x);
             this.preview.setAttributeNS(null, "cy", y);
         } else {
-            const w = parseFloat(this.preview.getAttribute("width"));
-            const cx = Math.round(x / w) * w;
-            const cy = Math.round(y / w) * w;
-            this.preview.setAttributeNS(null, "x", cx - w / 2);
-            this.preview.setAttributeNS(null, "y", cy - w / 2);
+            const scale = parseInt(document.querySelector(".map").dataset.scale);
+            const cx = Math.round(x / scale) * scale;
+            const cy = Math.round(y / scale) * scale;
+            this.preview.setAttributeNS(null, "x", cx);
+            this.preview.setAttributeNS(null, "y", cy);
         }
     },
     keyDown: function(ev) {
@@ -600,17 +600,6 @@ const waterMode = {
             }
             else if (maskMode == "remove") {
                 this.removeFromMask();
-            }
-        }
-        if (ev.key === "s") {
-            const radios = document.querySelectorAll("#water-mode input[name='water_shape']");
-            for (let i = 0; i < radios.length; i++) {
-                if (radios[i].checked) {
-                    const next = (i + 1) % radios.length;
-                    radios[next].checked = true;
-                    radios[next].dispatchEvent(new Event("change"));
-                    break;
-                }
             }
         }
         const widthSlider = document.getElementById("water-el-width");
@@ -701,19 +690,22 @@ const waterMode = {
             cy = y + w / 2;
             size = w / 2;
         }
+        const dupMargin = 0.6;
         const dup = Array.from(maskEls).map((el) => {
             if (el.tagName === "circle") {
                 const dist = Math.hypot(cx - el.cx.animVal.value, cy - el.cy.animVal.value);
-                return dist < el.r.animVal.value;
+                return dist < el.r.animVal.value * dupMargin;
             } else {
-                return cx >= el.x.animVal.value
-                    && cx <= el.x.animVal.value + el.width.animVal.value
-                    && cy >= el.y.animVal.value
-                    && cy <= el.y.animVal.value + el.height.animVal.value;
+                const margin = el.width.animVal.value * dupMargin;
+                return cx >= el.x.animVal.value + (margin / 2) 
+                    && cx <= el.x.animVal.value + margin
+                    && cy >= el.y.animVal.value + (margin / 2)
+                    && cy <= el.y.animVal.value + margin;
             }
         }).reduce((a, b) => a || b, false);
         if (!dup) {
             const maskEl = document.createElementNS(svgMask.namespaceURI, tag);
+            console.log("adding to mask: ", maskEl);
             if (isCircle) {
                 maskEl.setAttributeNS(null, "cx", cx);
                 maskEl.setAttributeNS(null, "cy", cy);
