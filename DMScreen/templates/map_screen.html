@@ -5,7 +5,7 @@
         <title>Map: Level {{ lvid }} - floor {{ floorid }}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
         <script src="/static/svg_view.js?v=0.1.6"></script>
-        <script src="/static/map_viewer.js?v=0.1.6"></script>
+        <script src="/static/map_viewer.js?v=0.1.7"></script>
         <style>
             body.container {
                 background-color: black;
@@ -50,6 +50,7 @@
         </div>
         <div class="map" 
              data-scale="{{ scale }}"
+             data-svgurl="/svg/{{ dungen_name }}/{{ lvid }}/{{ floorid }}"
             {% if floorid > 1 %}
              data-floor_up="/{{ dungen_name }}/map/{{ lvid }}/{{ floorid - 1 }}"
             {% endif %}
