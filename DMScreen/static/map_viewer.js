@@ -51,6 +51,16 @@ function toggle_light() {
     scale_light_overlay();
 }
 
+function reload_svg_img(url) {
+    // We only need to swap out "stamps" and "water"
+    const parser = new DOMParser();
+    fetch(url).then((resp) => {
+        newImg = parser.parseFromString(resp.text(), "image/svg+xml");
+        document.getElementById("water").replaceWith(newImg.getElementById("water"));
+        document.getElementById("stamps").replaceWith(newImg.getElementById("stamps"));
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const svg = document.querySelector(".map svg");
     const scale = parseInt(document.querySelector(".map").dataset.scale);
@@ -70,6 +80,7 @@ document.addEventListener("DOMContentLoaded", function() {
 `Keyboard actions:
 z: Zoom to extents
 g: Scale to 5' = 1"
+r: Reload map
 s: Toggle shadows
 l: Toggle light mask size
 k: Move to next floor up
@@ -90,6 +101,9 @@ j: Move to next floor down`
                 );
                 update_url_hash(svg_view.svg);
             }
+        }
+        else if (ev.key === 'r') {
+            reload_svg_img(svg_view.map.dataset.svgurl);
         }
         else if (ev.key === 's') {
             toggle_shadows(svg);
