@@ -979,11 +979,46 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("zoom_to_fit_btn").onclick = () => {
         svg.zoomToExtents();
     };
+    
+    // Add handlers for save
+    const save_btn = document.getElementById("save_btn");
+    const save_func = () => {
+        fetch(`/api/save/${dungeon}/${levelId}/${floorId}`, {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                rooms: notesMode.saveData(),
+                stamps: stampMode.saveData(),
+                water: waterMode.saveData()
+            })
+        }).then((r) => {
+            if (r.ok) {
+                notesMode.modifiedRooms.clear();
+                markPageClean();
+            }
+        });
+    };
+    save_btn.onclick = save_func; 
+    window.addEventListener("beforeunload", (e) => {
+        if (!isPageDirty()) {
+            return true;
+        }
+        e.preventDefault();
+        return false;
+    });
+
 
     // Add keyboard interactions
     document.addEventListener("keydown", (ev) => {
         if ((ev.key === "?" || ev.key === "F1") && currentMode.shortcuts) {
             alert("Keyboard actions:\n" + currentMode.shortcuts.join("\n"));
+        }
+        else if (ev.key === 's' && ev.ctrlKey) {
+            ev.preventDefault();
+            save_func();
         }
         else if (currentMode.keyDown) {
             currentMode.keyDown(ev);
@@ -1013,35 +1048,6 @@ document.addEventListener("DOMContentLoaded", function() {
             "_blank"
         ).focus();
     }
-
-    // Add handlers for save
-    const save_btn = document.getElementById("save_btn");
-    save_btn.onclick = () => {
-        fetch(`/api/save/${dungeon}/${levelId}/${floorId}`, {
-            method: "POST",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                rooms: notesMode.saveData(),
-                stamps: stampMode.saveData(),
-                water: waterMode.saveData()
-            })
-        }).then((r) => {
-            if (r.ok) {
-                notesMode.modifiedRooms.clear();
-                markPageClean();
-            }
-        });
-    };
-    window.addEventListener("beforeunload", (e) => {
-        if (!isPageDirty()) {
-            return true;
-        }
-        e.preventDefault();
-        return false;
-    });
 
     // Check if there is a room selected in the URL
     const navToRoom = (e) => {
