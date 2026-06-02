@@ -54,8 +54,8 @@ function toggle_light() {
 function reload_svg_img(url) {
     // We only need to swap out "stamps" and "water"
     const parser = new DOMParser();
-    fetch(url).then((resp) => {
-        newImg = parser.parseFromString(resp.text(), "image/svg+xml");
+    fetch(url).then((resp) => resp.text()).then((newsvg) => {
+        const newImg = parser.parseFromString(newsvg, "image/svg+xml");
         document.getElementById("water").replaceWith(newImg.getElementById("water"));
         document.getElementById("stamps").replaceWith(newImg.getElementById("stamps"));
     });
