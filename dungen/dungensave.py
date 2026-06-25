@@ -18,8 +18,9 @@ class StampInfo:
     y: int
     height: int
     width: int
-    href: str
     angle: int
+    href: str
+    children: List["StampInfo"]
 
     @property
     def transform(self) -> Optional[List[svg.Transform]]:
@@ -28,6 +29,18 @@ class StampInfo:
         centerX = self.x + (self.width / 2)
         centerY = self.y + (self.height / 2)
         return [ svg.Rotate(self.angle, centerX, centerY) ]
+
+    @classmethod
+    def from_dict(cls, d) -> "StampInfo":
+        return cls(
+            x = d.get("x", 0),
+            y = d.get("y", 0),
+            height = d.get("height", 0),
+            width = d.get("width", 0),
+            angle = d.get("angle", 0),
+            href = d.get("href", None),
+            children = [cls.from_dict(c) for c in d.get("children", [])],
+        )
 
 @dataclass
 class WaterMaskElement:
@@ -106,16 +119,27 @@ class FloorData:
     def set_stamps(self, stamps: List[StampInfo]):
         """Sets all of the stamp object for the floor, overwriting current content."""
         if remove_children(self.img, "stamps"):
-        	append_children(self.img, "stamps", [
-        	    svg.Image(
-        	        x = s.x,
-        	        y = s.y,
-        	        width = s.width,
-        	        height = s.height,
-        	        href = s.href,
-        	        transform = s.transform,
-        	    ) for s in stamps
-        	]) 
+            def stampsToEls(stamps: List[StampInfo]) -> List[svg.Element]:
+                return [
+        	        svg.Image(
+        	            x = s.x,
+        	            y = s.y,
+        	            width = s.width,
+        	            height = s.height,
+        	            href = s.href,
+        	            transform = s.transform,
+        	        ) if s.href else
+                    svg.SVG(
+        	            x = s.x,
+        	            y = s.y,
+        	            width = s.width,
+        	            height = s.height,
+                        elements = stampsToEls(s.children),
+        	            extra = {"transform": str(s.transform[0])} if s.transform else None,
+                    )
+                    for s in stamps
+                ]
+            append_children(self.img, "stamps", stampsToEls(stamps))
         else:
             raise AttributeError("Stamps element not in floor image")
 

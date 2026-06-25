@@ -198,7 +198,7 @@ def update_floor(dungeon: str, lvid: int, floorid: int):
             attributes = info["attributes"],
         )
     start = time.time()
-    f.set_stamps([StampInfo(**s) for s in request.json.get("stamps", [])])
+    f.set_stamps([StampInfo.from_dict(s) for s in request.json.get("stamps", [])])
     f.set_water_mask([WaterMaskElement(**e) for e in request.json.get("water", [])])
     d.set_floor(lvid, floorid, f)
     end = time.time()
