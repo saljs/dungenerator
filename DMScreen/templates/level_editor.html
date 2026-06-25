@@ -148,6 +148,7 @@
                             <br/>
                             <input type="text" disabled="true" id="stamp-spray-stamp-label"/>
                         </label>
+                        <label>
                             Size:
                             <br/>
                             <input id="stamp-spray-el-width" type="range" min="1" max="50" value="5" step="1"/>
@@ -159,6 +160,29 @@
                         </label>
                         <label>
                             <input id="stamp-spray-undo" type="button" disabled="true" value="Undo" />
+                        </label>
+                    </div>
+                    <div id="stamp-copy-mode">
+                        <h3>Stamp copy options:</h3>
+                        <label>
+                            Size:
+                            <br/>
+                            <input id="stamp-copy-el-width" type="range" min="1" max="50" value="5" step="1"/>
+                        </label>
+                        <label>
+                            Load/Save:
+                            <br/>
+                            <a id="stamp-copy-save" href="#" download="selection.svg">Save current selection</a>
+                            <br/>
+                            <input id="stamp-copy-load" type="file" name="selection.svg" accept="image/svg+xml" value="Load selection" />
+                        </label>
+                        <label>
+                            Preview:
+                            <br/>
+                            <div id="stamp-copy-preview"></div>
+                            <br/>
+                            <i id="stamp-copy-preview-note"></i>
+                            <br/>
                         </label>
                     </div>
                 </div>

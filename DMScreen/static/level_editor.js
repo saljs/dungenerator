@@ -310,15 +310,7 @@ const stampMode = {
         });
         document.querySelector("#stamp-mode input[type='button']")
         .addEventListener("click", () => {
-            const vals = { parent: "", dirs: [], stamps: [] };
-            document.querySelectorAll("#stamps image").forEach((el) => {
-                const stamp = mode.stampToObj(el);
-                stamp.name = stamp.href.split(/[/]/).pop();
-                if (!vals.stamps.find((st) => st.href === stamp.href)) {
-                    vals.stamps.push(stamp);
-                }
-            });
-            mode.displayStamps(vals);
+            mode.stampsInLevel(mode);
         });
         this.getStamps(null);
     },
@@ -363,7 +355,7 @@ const stampMode = {
                 prev_stamp.remove();
             }
             removeStylefromSVG("img-no-interaction");
-            document.querySelectorAll("#stamps image").forEach((stamp) => {
+            document.querySelectorAll("#stamps > image, #stamps > svg").forEach((stamp) => {
                 stamp.addEventListener("click", (ev) => {
                     stamp.remove();
                     markPageDirty()
@@ -443,14 +435,28 @@ const stampMode = {
             sr.stamps.map((stamp) => {
                 const dirEl = document.createElement("div");
                 const link = document.createElement("a");
-                const img = document.createElement("img");
                 link.innerText = stamp.name;
                 link.dataset.width = stamp.width;
                 link.dataset.height = stamp.height;
                 link.onclick = () => mode.selectStamp(stamp);
-                img.src = stamp.href;
-                img.setAttribute("loading", "lazy");
-                link.appendChild(img);
+
+                if (stamp.href) {
+                    const img = document.createElement("img");
+                    img.src = stamp.href;
+                    img.setAttribute("loading", "lazy");
+                    link.appendChild(img);
+                }
+                else if (stamp.children.length > 0) {
+                    const cont = document.createElement("div");
+                    const img = mode.createStamp(stamp);
+                    img.setAttributeNS(null, "width", "100%");
+                    img.setAttributeNS(null, "height", "100%");
+                    // Dumb rendering hack needed for firefox
+                    const ser = new XMLSerializer();
+                    cont.innerHTML = ser.serializeToString(img);
+
+                    link.appendChild(cont);
+                }
                 dirEl.appendChild(link);
                 dirEl.classList.add("stamp");
                 return dirEl;
@@ -460,17 +466,12 @@ const stampMode = {
     selectStamp: function(stamp) {
         const svg = document.querySelector(".map svg g");
         const prev_stamp = document.getElementById("stamp_preview");
-        const stampPointer = document.createElementNS(svg.namespaceURI, "image");
-        stampPointer.setAttributeNS(null, "x", 0);
-        stampPointer.setAttributeNS(null, "y", 0);
-        stampPointer.setAttributeNS(null, "width", stamp.width);
-        stampPointer.setAttributeNS(null, "height", stamp.height);
-        stampPointer.setAttributeNS(null, "href", stamp.href);
-        stampPointer.setAttributeNS(null, "opacity", 0.3);
-        stampPointer.setAttributeNS(null, "id", "stamp_preview");
         if (prev_stamp) {
             prev_stamp.remove();
         }
+        const stampPointer = this.createStamp(stamp);
+        stampPointer.setAttributeNS(null, "opacity", 0.3);
+        stampPointer.setAttributeNS(null, "id", "stamp_preview");
         svg.appendChild(stampPointer);
         this.currentStamp = stamp;
     },
@@ -479,28 +480,40 @@ const stampMode = {
         const svg_stamps = document.getElementById("stamps");
         const stampPointer = document.getElementById("stamp_preview");
         if (stampPointer) {
-            const stamp = this.createStamp(
-                stampPointer.x.animVal.value,
-                stampPointer.y.animVal.value,
-                this.getStampAngle(stampPointer)
-            );
+            const stamp = stampPointer.cloneNode(true);
+            stamp.setAttributeNS(null, "opacity", 1);
+            stamp.setAttributeNS(null, "id", "");
             svg_stamps.appendChild(stamp);
             markPageDirty();
         }
     },
-    createStamp: function(x, y, angle) {
+    createStamp: function(stamp) {
+        const mode = this;
         const svg = document.querySelector(".map svg");
-        const stamp = document.createElementNS(svg.namespaceURI, "image");
-        const width = this.currentStamp.width;
-        const height = this.currentStamp.height;
-        stamp.setAttributeNS(null, "x", x);
-        stamp.setAttributeNS(null, "y", y);
-        stamp.setAttributeNS(null, "width", width);
-        stamp.setAttributeNS(null, "height", height);
-        stamp.setAttributeNS(null, "href", this.currentStamp.href);
-        stamp.setAttributeNS(null, "transform",
-            `rotate(${angle}, ${x + (width / 2)}, ${y + (height / 2)})`);
-        return stamp;
+        const img = stamp.href 
+            ? document.createElementNS(svg.namespaceURI, "image")
+            : document.createElementNS(svg.namespaceURI, "svg");
+        const angle = stamp.angle ? stamp.angle : 0;
+        const x = stamp.x ? stamp.x : 0;
+        const y = stamp.y ? stamp.y : 0;
+        img.setAttributeNS(null, "x", x);
+        img.setAttributeNS(null, "y", y);
+        img.setAttributeNS(null, "width", stamp.width);
+        img.setAttributeNS(null, "height", stamp.height);
+        if (stamp.angle !== 0) {
+            img.setAttributeNS(null, "transform",
+                `rotate(${angle}, ${x + (stamp.width / 2)}, ${y + (stamp.height / 2)})`);
+        }
+        if (stamp.href) {
+            img.setAttributeNS(null, "href", stamp.href);
+        }
+        else if (stamp.children.length > 0) {
+            img.setAttributeNS(null, "viewbox", `0 0 ${stamp.width} ${stamp.height}`);
+            stamp.children.forEach((s) => {
+                img.append(mode.createStamp(s));
+            });
+        }
+        return img;
     },
     rotateStamp: function() {
         const stampPointer = document.getElementById("stamp_preview");
@@ -515,24 +528,71 @@ const stampMode = {
         }
     },
     getStampAngle: function(stamp) {
+        if (!stamp.transform) {
+            return 0;
+        }
         const transform = stamp.transform.animVal;
         if (transform.numberOfItems === 0) {
             return 0;
         }
         return transform.getItem(0).angle;
     },
+    stampsEqual(stamp1, stamp2) {
+        if (stamp1.x !== stamp2.x
+            || stamp1.y !== stamp2.y
+            || stamp1.width !== stamp2.width
+            || stamp1.height !== stamp2.height
+            || stamp1.angle !== stamp2.angle
+        ) {
+            return false;
+        }
+        if (stamp1.href && stamp1.href === stamp2.href) {
+            return true;
+        }
+        else if (stamp1.children.length > 0
+            && stamp1.children.length === stamp2.children.length
+        ) {
+            for (let i = 0; i < stamp1.children.length; i++) {
+                if (!this.stampsEqual(stamp1.children[i], stamp2.children[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    },
     stampToObj: function(stamp) {
+        const mode = this;
         const angle = this.getStampAngle(stamp);
         const x = stamp.x.animVal.value;
         const y = stamp.y.animVal.value;
         const width = stamp.width.animVal.value;
         const height = stamp.height.animVal.value;
-        const href = stamp.href.animVal;
+        const href = stamp.href ? stamp.href.animVal : null;
+        const children = stamp.children
+            ? [...stamp.children].map(mode.stampToObj, thisArg = mode) : [];
         return {
             x: x, y: y,
             width: width, height: height,
             href: href, angle: angle,
-        };
+            children: [...stamp.children].map(mode.stampToObj, thisArg = mode),
+        }
+    },
+    stampsInLevel: function (mode) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const vals = { parent: "", dirs: [], stamps: [] };
+        document.querySelectorAll("#stamps > image, #stamps > svg").forEach((el) => {
+            const stamp = mode.stampToObj(el);
+            stamp.name = stamp.href ? stamp.href.split(/[/]/).pop()
+                : `Copied selection (${stamp.width / scale}x${stamp.height / scale}, ${stamp.children.length} stamps)`;
+            stamp.angle = 0;
+            stamp.x = 0;
+            stamp.y = 0;
+            if (!vals.stamps.find((st) => mode.stampsEqual(st, stamp))) {
+                vals.stamps.push(stamp);
+            }
+        });
+        mode.displayStamps(vals);
     }
 };
 
@@ -609,7 +669,7 @@ const waterMode = {
         else if (ev.key === "j" && this.currentSize > widthSlider.min) {
             this.changeSize(this.currentSize - 1);
         }
-        widthSlider.value = this.size;
+        widthSlider.value = this.currentSize;
     },
     keyUp: null,
     shortcuts: [
@@ -661,7 +721,8 @@ const waterMode = {
             waterPrev.setAttributeNS(null, "cy", 0);
             waterPrev.setAttributeNS(null, "r", (scale * this.currentSize) / 2);
             waterPrev.setAttributeNS(null, "filter", "url(#water_filter)");
-        } else {
+        }
+        else {
             const size = scale * this.currentSize;
             waterPrev.setAttributeNS(null, "x", 0);
             waterPrev.setAttributeNS(null, "y", 0);
@@ -682,7 +743,8 @@ const waterMode = {
             cx = this.preview.cx.animVal.value;
             cy = this.preview.cy.animVal.value;
             size = this.preview.r.animVal.value;
-        } else {
+        }
+        else {
             const w = parseFloat(this.preview.getAttribute("width"));
             const x = parseFloat(this.preview.getAttribute("x"));
             const y = parseFloat(this.preview.getAttribute("y"));
@@ -705,7 +767,6 @@ const waterMode = {
         }).reduce((a, b) => a || b, false);
         if (!dup) {
             const maskEl = document.createElementNS(svgMask.namespaceURI, tag);
-            console.log("adding to mask: ", maskEl);
             if (isCircle) {
                 maskEl.setAttributeNS(null, "cx", cx);
                 maskEl.setAttributeNS(null, "cy", cy);
@@ -864,7 +925,7 @@ const sprayMode = {
         this.size = size;
     },
     sprayStamps: function() {
-        if (stampMode.currentStamp) {
+        if (stampMode.currentStamp && stampMode.currentStamp.href) {
             const svg = document.querySelector(".map svg g");
             const scale = parseInt(document.querySelector(".map").dataset.scale);
             const area = (scale * this.size) * (scale * this.size);
@@ -883,7 +944,12 @@ const sprayMode = {
                     Math.random() * (this.size * scale - stampMode.currentStamp.height)
                  ) + boxY;
                 const angle = Math.floor(Math.random() * 8) * 45;
-                const stamp = stampMode.createStamp(x, y, angle);
+                const stamp = stampMode.createStamp({
+                    x: x, y: y, angle: angle,
+                    width: stampMode.currentStamp.width,
+                    height: stampMode.currentStamp.height,
+                    href: stampMode.currentStamp.href
+                });
                 svg_stamps.appendChild(stamp);
                 this.undoBuffer.push(stamp);
             }
@@ -901,12 +967,168 @@ const sprayMode = {
     }
 };
 
+const copyMode = {
+    name: "Copy stamps",
+    oneTimeSetup: function() {
+        const mode = this;
+        const widthSlider = document.getElementById("stamp-copy-el-width");
+        const loadBtn = document.getElementById("stamp-copy-load");
+        widthSlider.addEventListener("change", (ev) => {
+            mode.changeSize(parseInt(ev.target.value));
+        });
+        loadBtn.addEventListener("change", (ev) => {
+            const file = ev.target.files?.[0];
+            file.text().then(mode.loadSelection);
+        });
+    },
+    setup: function() {
+        document.getElementById("stamp-copy-el-width").value = this.size;
+        this.preview = this.showAreaPreview();
+        addStyletoSVG("img-no-interaction", "image { pointer-events: none }");
+        document.getElementById("stamp-copy-mode").style.display = "flex";
+        document.getElementById("stamp-copy-preview").innerHTML = "No selection";
+        document.getElementById("stamp-copy-preview-note").innerText = "";
+        document.getElementById("stamp-copy-save").href = "";
+    },
+    teardown: function() {
+        this.preview.remove();
+        this.preview = null;
+        removeStylefromSVG("img-no-interaction");
+        document.getElementById("stamp-copy-mode").style.display = "none";
+    },
+    leftClick: null,
+    rightClick: function(ev) {
+        ev.preventDefault();
+        this.copyStamps();
+    },
+    mouseMove: function(x, y) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const r = (this.size / 2) * scale;
+        this.preview.setAttributeNS(null, "x", x - r);
+        this.preview.setAttributeNS(null, "y", y - r);
+    },
+    keyDown: function(ev) {
+        const widthSlider = document.getElementById("stamp-copy-el-width");
+        if (ev.key === "k" && this.size < widthSlider.max) {
+            this.changeSize(this.size + 1);
+        }
+        else if (ev.key === "j" && this.size > widthSlider.min) {
+            this.changeSize(this.size - 1);
+        }
+        widthSlider.value = this.size;
+    },
+    keyUp: null,
+    shortcuts: [
+        "k: Increase area",
+        "j: Decrease area",
+        "Right-click: Copy stamps"
+    ],
+    saveData: null,
+
+    /*
+     * Mode funtions
+     */
+    preview: null,
+    size: 5,
+    showAreaPreview: function() {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const svg = document.querySelector(".map svg g");
+        const areaPrev = document.createElementNS(svg.namespaceURI, "rect");
+        areaPrev.setAttributeNS(null, "id", "area_preview");
+        areaPrev.setAttributeNS(null, "x", 0);
+        areaPrev.setAttributeNS(null, "y", 0);
+        areaPrev.setAttributeNS(null, "width", this.size * scale);
+        areaPrev.setAttributeNS(null, "height", this.size * scale);
+        areaPrev.setAttributeNS(null, "opacity", 0.35);
+        areaPrev.setAttributeNS(null, "fill", "limegreen");
+        areaPrev.style.pointerEvents = "none";
+        svg.appendChild(areaPrev);
+        return areaPrev;
+    },
+    changeSize: function(size) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        this.preview.setAttributeNS(null, "width",  size * scale);
+        this.preview.setAttributeNS(null, "height",  size * scale);
+        this.size = size;
+    },
+    copyStamps: function() {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const boxW = this.size * scale;
+        const boxX = this.preview.x.animVal.value;
+        const boxY = this.preview.y.animVal.value;
+        const stamps = [];
+        document.getElementById("stamps").childNodes.forEach((stamp) => {
+            const stampX = stamp.x.animVal.value;
+            const stampY = stamp.y.animVal.value;
+            const stampW = stamp.width.animVal.value;
+            const stampH = stamp.height.animVal.value;
+            if (stampX >= boxX
+                && stampX + stampW < boxX + boxW
+                && stampY >= boxY
+                && stampY + stampH < boxY + boxW
+            ) {
+                const clone = stamp.cloneNode(true);
+                const angle = stampMode.getStampAngle(clone);
+                const newX = clone.x.animVal.value - boxX;
+                const newY = clone.y.animVal.value - boxY;
+                clone.setAttributeNS(null, "x", newX);
+                clone.setAttributeNS(null, "y", newY);
+                clone.setAttributeNS(null, "transform",
+                    `rotate(${angle}, ${newX + (stampW / 2)}, ${newY + (stampH / 2)})`);
+                stamps.push(stampMode.stampToObj(clone));
+            }
+        });
+        if (stamps.length === 0) {
+            return;
+        }
+        stampMode.selectStamp({
+            width: boxW,
+            height: boxW,
+            children: stamps
+        });
+        const copyPrev = document.getElementById("stamp-copy-preview");
+        const copyPrevText = document.getElementById("stamp-copy-preview-note");
+        const saveBtn = document.getElementById("stamp-copy-save");
+        const ser = new XMLSerializer();
+        const imgPrev = stampMode.createStamp({
+            width: boxW,
+            height: boxW,
+            children: stamps
+        });
+        saveBtn.href = "data:image/svg+xml;charset=utf-8,"
+            + encodeURIComponent(ser.serializeToString(imgPrev));
+        // Dumb rendering hack needed for firefox
+        imgPrev.setAttributeNS(null, "width", "100%");
+        imgPrev.setAttributeNS(null, "height", "100%");
+        copyPrev.innerHTML = ser.serializeToString(imgPrev);
+        copyPrevText.innerText = `${this.size}x${this.size}, ${stamps.length} stamps`;
+    },
+    loadSelection: function (svgTxt) {
+        const scale = parseInt(document.querySelector(".map").dataset.scale);
+        const copyPrev = document.getElementById("stamp-copy-preview");
+        const copyPrevText = document.getElementById("stamp-copy-preview-note");
+        const saveBtn = document.getElementById("stamp-copy-save");
+        
+        const parser = new DOMParser();
+        const selection = parser.parseFromString(svgTxt, "image/svg+xml").documentElement;
+        const stamp = stampMode.stampToObj(selection);
+        stampMode.selectStamp(stamp);
+        copyPrevText.innerText = `${stamp.width / scale}x${stamp.height / scale}, ${stamp.children.length} stamps`;
+        saveBtn.href = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgTxt);
+       
+        const ser = new XMLSerializer();
+        selection.setAttributeNS(null, "width", "100%");
+        selection.setAttributeNS(null, "height", "100%");
+        copyPrev.innerHTML = ser.serializeToString(selection);
+    }
+};
+
 /*
  * Setup event listeners
  */
 document.addEventListener("DOMContentLoaded", function() {
     // Setup mode selection
-    const allModes = [notesMode, stampMode, waterMode, sprayMode];
+    const allModes = [notesMode, stampMode, waterMode, sprayMode, copyMode];
     let currentMode = null;
     const modeSelect = document.getElementById("mode_select");
     allModes.forEach((mode) => {
