@@ -122,13 +122,16 @@ j: Move to next floor down`
         }
         else if (ev.key === 'g') {
             const svgEl = d3.zoomTransform(svg_view.svg);
-            const displayWidth = parseInt(window.prompt("Enter display width (Inches):"));
+            const defText = localStorage.getItem("screen-display-in") ?
+                localStorage.getItem("screen-display-in")
+                : "";
+            const displayWidth = parseInt(
+                window.prompt("Enter display width (Inches):", defText)
+            );
             if (displayWidth) {
-                svg_view.zoomTo(
-                    svgEl.x + (window.innerWidth / 2),
-                    svgEl.y + (window.innerHeight / 2),
-                    (window.innerWidth / displayWidth) / scale
-                );
+                localStorage.setItem("screen-display-in", displayWidth);
+                svg_view.svg.scale = (window.innerWidth / displayWidth) / scale;
+                d3.select(".map svg").call(svg_view.zoom.scaleTo, svg_view.svg.scale, [0, 0]);
                 update_url_hash(svg_view.svg);
             }
         }
