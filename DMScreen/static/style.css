@@ -150,7 +150,8 @@ body {
     width: 20vw;
 }
 
-.stamp img {
+.stamp > a > img,
+.stamp > a > div {
     width: 200px;
     max-height: 200px;
     display: block;
@@ -175,4 +176,16 @@ body {
 #stamp-spray-mode {
     display: none;
     flex-direction: column;
+}
+
+#stamp-copy-mode {
+    display: none;
+    flex-direction: column;
+}
+
+#stamp-copy-preview {
+    display: block;
+    width: 200px;
+    max-height: 200px;
+    border: 2px solid rgb(140 140 140);
 }
