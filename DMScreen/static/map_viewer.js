@@ -1,5 +1,10 @@
-const light_radius_options = ["0", "15%", "20%", "30%", "40%"];
-let light_radius = 0;
+const light_radius_map = {
+    2: 5,
+    5: 10,
+    10: 20,
+    20: 2,
+};
+let mouseCursorTimeout = null;
 
 function toggle_shadows(svg) {
     const fg = document.getElementById("fg-elements");
@@ -11,21 +16,52 @@ function toggle_shadows(svg) {
     }
 }
 
-function scale_light_overlay(size) {
+function scale_light_overlay(svg, scale) {
+    const svgEl = d3.zoomTransform(svg);
+    const overlaySvg = document.querySelector("div.overlay svg");
+    const sfac = scale * svgEl.k;
+    overlaySvg.setAttribute("viewBox",
+        `0 0 ${window.innerWidth / sfac}, ${window.innerHeight / sfac}`
+    );
+    return sfac;
+}
+
+function place_light(clickX, clickY, del = false) {
+    const overlay = document.getElementById("overlay-mask");
     const svg = document.querySelector("div.overlay svg");
-    const mask = document.getElementById("overlay-mask");
-    const rect = mask.querySelector("rect");
-    const circle = mask.querySelector("circle");
-    const circle2 = document.getElementById("overlay-grad-circ");
-    svg.setAttribute("viewBox", `0 0 ${window.innerWidth}, ${window.innerHeight}`);
-    rect.setAttributeNS(null, "width", window.innerWidth);
-    rect.setAttributeNS(null, "height", window.innerHeight);
-    circle.setAttributeNS(null, "cx", window.innerWidth / 2);
-    circle.setAttributeNS(null, "cy", window.innerHeight / 2);
-    circle.setAttributeNS(null, "r", light_radius_options[light_radius]);
-    circle2.setAttributeNS(null, "cx", window.innerWidth / 2);
-    circle2.setAttributeNS(null, "cy", window.innerHeight / 2);
-    circle2.setAttributeNS(null, "r", light_radius_options[light_radius]);
+    const lights = overlay.querySelectorAll("circle");
+    let circleClicked = false;
+
+    lights.forEach((l) => {
+        const dist = Math.hypot(
+            clickX - l.cx.animVal.value,
+            clickY - l.cy.animVal.value
+        );
+        // Check if light source was clicked
+        if (dist < l.r.animVal.value) {
+            if (del) {
+                // Remove light source
+                circleClicked = true;
+                l.remove();
+            }
+            else {
+                // Increment light source size
+                circleClicked = true;
+                l.setAttributeNS(null, "r", light_radius_map[l.r.animVal.value]);
+            }
+        }
+    });
+    if (!circleClicked && !del) {
+        // Create new light source
+        const newLS = document.createElementNS(svg.namespaceURI, "circle");
+        newLS.setAttributeNS(null, "r", 2);
+        newLS.setAttributeNS(null, "cx",
+            `${100 * (clickX / svg.width.animVal.value)}%`);
+        newLS.setAttributeNS(null, "cy",
+            `${100 * (clickY / svg.height.animVal.value)}%`);
+        newLS.setAttributeNS(null, "fill", "url(#light-grad)");
+        overlay.appendChild(newLS);
+    }
 }
 
 function update_url_hash(svg) {
@@ -38,17 +74,14 @@ function update_url_hash(svg) {
     window.location.hash = JSON.stringify(zoomProps);
 }
 
-function toggle_light() {
+function toggle_light_mask() {
     const overlay = document.querySelector("div.overlay");
-    if(light_radius === light_radius_options.length - 1) {
-        light_radius = 0;
-        overlay.style.display = "none";
+    if (overlay.style.display === "none" || !overlay.style.display) {
+        overlay.style.display = "block";
     }
     else {
-        light_radius++;
-        overlay.style.display = "inherit";
+        overlay.style.display = "none";
     }
-    scale_light_overlay();
 }
 
 function reload_svg_img(url) {
@@ -62,15 +95,11 @@ function reload_svg_img(url) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    const svg = document.querySelector(".map svg");
     const scale = parseInt(document.querySelector(".map").dataset.scale);
+    const overlay = document.querySelector("div.overlay");
 
     const svg_view = new SVGView(null, null, (ev) => {
         update_url_hash(svg_view.svg);
-        document.body.style.cursor = "grab";
-        setTimeout(() => {
-            document.body.style.cursor = "none";
-        }, 3000);
     });
 
     // Add in keyboard actions
@@ -82,7 +111,8 @@ z: Zoom to extents
 g: Scale to 5' = 1"
 r: Reload map
 s: Toggle shadows
-l: Toggle light mask size
+l: Toggle light mask on/off
+n: Add new lightsource
 k: Move to next floor up
 j: Move to next floor down`
             );
@@ -106,10 +136,11 @@ j: Move to next floor down`
             reload_svg_img(svg_view.map.dataset.svgurl);
         }
         else if (ev.key === 's') {
-            toggle_shadows(svg);
+            toggle_shadows(svg_view.svg);
         }
         else if (ev.key === 'l') {
-            toggle_light();
+            scale_light_overlay(svg_view.svg, scale);
+            toggle_light_mask();
         }
         else if (ev.key === 'k') {
             if ("floor_up" in svg_view.map.dataset) {
@@ -125,18 +156,54 @@ j: Move to next floor down`
                     + window.location.hash;
             }
         }
+        else if (ev.key === "Shift") {
+            overlay.style.pointerEvents = "none";
+        }
+    });
+    document.addEventListener("keyup", (ev) => {
+        if (ev.key === "Shift") {
+            overlay.style.pointerEvents = "auto";
+        }
     });
 
+    // Add listeners for light overlay
+    scale_light_overlay(svg_view.svg, scale);
+    window.addEventListener("resize", () => {
+        scale_light_overlay(svg_view.svg, scale);
+    });
+    const lights_click = (ev) => {
+        if (ev.shiftKey) {
+            return;
+        }
+        ev.preventDefault();
+        const sfac = scale_light_overlay(svg_view.svg, scale);
+        const clickX = ev.clientX / sfac;
+        const clickY = ev.clientY / sfac;
+        place_light(clickX, clickY,  ev.button === 2);
+    };
+    overlay.onclick = lights_click;
+    overlay.addEventListener("contextmenu", lights_click);
+
+    // Add mouse cursor hiding listeners
+    document.addEventListener("mousemove", () => {
+        document.body.style.cursor = "crosshair";
+        if(mouseCursorTimeout !== null) {
+            clearTimeout(mouseCursorTimeout);
+            mouseCursorTimeout = null;
+        }
+        mouseCursorTimeout = setTimeout(() => {
+            document.body.style.cursor = "none";
+            mouseCursorTimeout = null;
+        }, 3000);
+    });
+
+    // Aquire screen wakelock
+    navigator.wakeLock.request("screen");
+
+    // Set window hash zoom
     if (window.location.hash) {
         const hashVal = decodeURIComponent(window.location.hash.slice(1));
         const zoomProps = JSON.parse(hashVal);
         svg_view.zoomTo(zoomProps["x"], zoomProps["y"], zoomProps["k"]);
     }
-
-    // Aquire screen wakelock
-    navigator.wakeLock.request("screen");
-
-    // Add listeners for scaling light overlay
-    scale_light_overlay();
-    window.addEventListener("resize", scale_light_overlay);
 });
