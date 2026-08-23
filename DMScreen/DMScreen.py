@@ -70,12 +70,15 @@ def encounter_screen(dungeon: str, lvid: int, floorid: int, roomId: str):
     uid = UUID(roomId)
     if f is None:
         abort(404)
-    def book_link(book:str, page: int) -> str:
+    def book_link(book: str, page: int) -> str:
         if app.config["BOOKS_URL"]:
             return app.config["BOOKS_URL"].replace("$b", book).replace("$p", str(page))
         return "#"
     return render_template(
         "encounter_screen.html",
+        dungen_name = dungeon,
+        lvid = lvid,
+        floorid = floorid,
         room = f[uid],
         roomId = uid,
         createBookLink = book_link,
@@ -237,6 +240,9 @@ def set_app_config(
         app.logger.info(f"Startup took {end - start} seconds.")
 
     app.config["BOOKS_URL"] = books_url
+    if books_url is not None:
+        app.logger.info(f"Book URL pattern: {books_url}")
+
     app.config["WARN_SECS"] = warn_duration
     return app
 

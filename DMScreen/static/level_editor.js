@@ -1180,8 +1180,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
     const moveHandler = (ev) => {
+        const z = d3.zoomTransform(document.querySelector(".map svg"));
         if (currentMode.mouseMove) {
-            const z = d3.zoomTransform(document.querySelector(".map svg"));
             // Find SVG coord of top left corner
             const originX = -z.x / z.k;
             const originY = -z.y / z.k;
@@ -1191,6 +1191,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
             currentMode.mouseMove(x, y);
         }
+        const zoomProps = {
+            "x": z.x,
+            "y": z.y,
+            "k": z.k,
+        };
+        localStorage.setItem("level-editor-zoom", JSON.stringify(zoomProps));
     };
     // Add click-to-drag handler to map
     const svg = new SVGView(
@@ -1201,6 +1207,10 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("zoom_to_fit_btn").onclick = () => {
         svg.zoomToExtents();
     };
+    if (localStorage.getItem("level-editor-zoom")) {
+        const zoomProps = JSON.parse(localStorage.getItem("level-editor-zoom"));
+        svg.zoomTo(zoomProps["x"], zoomProps["y"], zoomProps["k"]);
+    }
     
     // Add handlers for save
     const save_btn = document.getElementById("save_btn");

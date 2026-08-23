@@ -5,64 +5,96 @@
         <title>DMScreen: Encounter</title>
         <link rel="stylesheet" href="/static/style.css">
         <link rel="stylesheet" href="/static/table_style.css">
-        <script src="/static/encounters.js"></script>
+        <script src="/static/encounters.js?ver=0.0.1"></script>
         <style>
-            .buttons button {
+            .buttons button, input {
                 margin: 10px;
             }
-            button {
+            button, input {
                 font-size: 1.2em;
             }
-            .row-dead {
-                background-color: coral;
+            .encounter {
+                max-width: 48vw;
+            }
+            .book-popout > iframe {
+                width: 100%;
+            }
+            .encounter-text {
+                padding-bottom: 10px;
+                border-bottom: 2px solid rgb(160 160 160);
+            }
+            #encounter-players {
+                overflow-y: scroll;
+            }
+            .encounter-player:nth-child(even) {
+                background: #dad5c1;
+            }
+            .book-ref {
+                font-style: italic;
+                font-size: 10pt;
+                margin-bottom: 15px;
+            }
+            .encounter-player {
+                border: 2px solid rgb(160 160 160);
+                padding: 5px;
+                margin-bottom: 15px;
+            }
+            .encounter-player.selected {
+                border: 4px solid #495c2a;
+            }
+            .encounter-player.dead > h4 {
+                color: #591e32;
+                text-decoration: line-through;
+            }
+            .encounter-player > h4 {
+                margin: 5px 0;
+            }
+            .encounter-player input {
+                margin: 5px 0;
             }
         </style>
     </head>
-    <body class="container cols">
-        <h1>Encounter</h1>
-        <pre> {{ room.notes }} </pre>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Initiative</th>
-                    <th>Remaining HP</th>
-                    <th>Add damge</th>
-                    <th>XP</th>
-                    <th>Book</th>
-                </tr>
-            </thead>
-            <tbody id="encounter-table">
-                {% for item in room.encounter.items %}
-                    <tr>
-                        <td>
-                            <a target="blank" href="{{ createBookLink(item.book, item.book_page) }}">
-                                {{ item.name }}
-                            </a>
-                        </td>
-                        <td data-initiative="{{ item.initiative }}">
-                            <input type="number" />
-                        </td>
-                        <td class="enemy-hp">
-                            <input type="number" value="{{ item.hp }}" />
-                        </td>
-                        <td class="add-dmg">
-                            <button>Add damage</button>
-                        </td>
-                        <td>
-                            {{ item.xp }}
-                        </td>
-                        <td>
-                            {{ item.book }}pg{{ item.book_page }}
-                        </td>
-                    </tr>
+    <body class="container rows">
+        <div class="container cols encounter">
+            <h1>Encounter - Level {{ lvid }}, floor {{ floorid }}</h1>
+            <a href="/{{ dungen_name }}/level/{{ lvid }}/{{ floorid }}#{{ roomId }}">Go to room</a>
+            <div class="encounter-text">
+                {% for line in room.notes.split("\n") %}
+                    <p>{{ line }}</p>
                 {% endfor %}
-            </tbody>
-        </table>
-        <div class="buttons">
-            <button id="add-ally">Add ally</button>
-            <button id="tally-xp">Tally XP</button>
-            <button id="sort-init">Arrange in initiative order</button>
+            </div>
+            <div id="encounter-players">
+                {% for item in room.encounter.items %}
+                    <div class="encounter-player">
+                        <h4>{{ item.name }}</h4>
+                        <span class="xp">{{ item.xp }}</span> XP
+                        <br />
+                        <a target="blank" class="book-ref" href="{{ createBookLink(item.book, item.book_page) }}">
+                            {{ item.book }} p.g. {{ item.book_page }}
+                        </a>
+                        <br />
+                        <label>
+                            Initiative (+{{ item.initiative }})
+                            <input type="number" class="initiative" data-initiative="{{ item.initiative }}" />
+                        </label>
+                        <br />
+                        <label>
+                            HP ({{ item.hp }})
+                            <input autocomplete="off" type="number" class="hp" value="{{ item.hp }}" />
+                        </label>
+                        <br />
+                        <button class="add-damage">Add damage</button>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="buttons">
+                <button id="add-ally">Add ally</button>
+                <button id="tally-xp">Tally XP</button>
+                <button id="sort-init">Arrange in initiative order</button>
+            </div>
+        </div>
+        <div class="container stretch book-popout" {% if  createBookLink('mm1', 1) == "#": %} style="display:none" {% endif %}>
+            <iframe src="{{ createBookLink('mm1', 1) }}" />
         </div>
     </body>
 </html>
