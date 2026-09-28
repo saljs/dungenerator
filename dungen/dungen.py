@@ -57,7 +57,7 @@ def create_level(
                 Point(
                     random.randint(0, spec.width - spec.room_width.upper), 
                     random.randint(0, spec.height - spec.room_height.upper), 
-                ) for _ in random.randint(spec.stairs_down.lower, spec.stairs_down.upper)
+                ) for _ in range(random.randint(spec.stairs_down.lower, spec.stairs_down.upper))
             ]
             
         if spec.towers:
@@ -189,7 +189,7 @@ def main_func():
             Point(
                 random.randint(0, level_spec.width - level_spec.room_width.upper), 
                 random.randint(0, level_spec.height - level_spec.room_height.upper), 
-            ) for _ in random.randint(level_spec.stairs_down.lower, level_spec.stairs_down.upper)
+            ) for _ in range(random.randint(level_spec.stairs_down.lower, level_spec.stairs_down.upper))
         ] if i - starting_levels == spec.level_count else []
         
         stairs_up, imgs = create_level(
