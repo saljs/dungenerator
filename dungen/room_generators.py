@@ -40,11 +40,12 @@ class LevelSpec:
 def UniformRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    down: List[Point],
     use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms."""
     stairs_up = len(up)
-    stairs_down = random.randint(spec.stairs_down.lower, spec.stairs_down.upper)
+    stairs_down = len(down)
  
     for _ in range(max(random.randint(spec.rooms.lower, spec.rooms.upper), stairs_up + stairs_down)):
         is_shop = random.random() < spec.shop_chance
@@ -64,6 +65,7 @@ def UniformRoomFactory(
             stairs_down -= 1
             stair = Stairs.DOWN
             is_shop = False
+            location = down[stairs_up]
         if use_towers:
             stair |= Stairs.DOWN
         yield Room(
@@ -216,9 +218,10 @@ generator_map = {
 def RoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    down: List[Point],
     use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     try:
-        return generator_map[spec.room_alg](spec, up, use_towers)
+        return generator_map[spec.room_alg](spec, up, down, use_towers)
     except KeyError:
         raise Exception(f"{spec.room_alg} is not a recognized room creation algorithm.")
