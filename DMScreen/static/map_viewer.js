@@ -112,9 +112,9 @@ g: Scale to 5' = 1"
 r: Reload map
 s: Toggle shadows
 l: Toggle light mask on/off
-n: Add new lightsource
 k: Move to next floor up
-j: Move to next floor down`
+j: Move to next floor down
+arrow keys: Move the map`
             );
         }
         else if (ev.key === 'z') {
@@ -161,6 +161,22 @@ j: Move to next floor down`
         }
         else if (ev.key === "Shift") {
             overlay.style.pointerEvents = "none";
+        }
+        else if (ev.key === "ArrowLeft") {
+            const svgEl = d3.zoomTransform(svg_view.svg);
+            svg_view.zoomTo(svgEl.x - scale, svgEl.y, svgEl.k);
+        }
+        else if (ev.key === "ArrowRight") {
+            const svgEl = d3.zoomTransform(svg_view.svg);
+            svg_view.zoomTo(svgEl.x + scale, svgEl.y, svgEl.k);
+        }
+        else if (ev.key === "ArrowUp") {
+            const svgEl = d3.zoomTransform(svg_view.svg);
+            svg_view.zoomTo(svgEl.x, svgEl.y - scale, svgEl.k);
+        }
+        else if (ev.key === "ArrowDown") {
+            const svgEl = d3.zoomTransform(svg_view.svg);
+            svg_view.zoomTo(svgEl.x, svgEl.y + scale, svgEl.k);
         }
     });
     document.addEventListener("keyup", (ev) => {
