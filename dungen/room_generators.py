@@ -83,12 +83,13 @@ def UniformRoomFactory(
 def ClusteredRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    down: List[Point],
     use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in connecting clusters."""
     std_mult = spec.extra.get("cluster_std", 2)
     start_count = spec.extra.get("cluster_starts", 5)
-    uniform_gen = UniformRoomFactory(spec, up, use_towers)
+    uniform_gen = UniformRoomFactory(spec, up, down, use_towers)
     start_rooms: List[Room] = []
     while room := next(uniform_gen, None):
         if (
@@ -136,6 +137,7 @@ def ClusteredRoomFactory(
 def LinearRoomFactory(
     spec: LevelSpec,
     up: List[Point],
+    down: List[Point],
     use_towers: bool = False,
 ) -> Generator[Room, None, None]:
     """A generator that returns randomly created rooms in linear rows."""
@@ -149,7 +151,7 @@ def LinearRoomFactory(
     )
 
     # Get starting rooms
-    uniform_gen = UniformRoomFactory(spec, up, use_towers)
+    uniform_gen = UniformRoomFactory(spec, up, down, use_towers)
     room_count = 0
     while room := next(uniform_gen, None):
         if (
@@ -186,6 +188,7 @@ def LinearRoomFactory(
                     stairs_down = Bound(0, 0),
                 ),
                 up = [],
+                down = down,
                 use_towers = use_towers,
             )
 
