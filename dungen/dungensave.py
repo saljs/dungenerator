@@ -243,6 +243,10 @@ class DungenSave:
         """Adds a new level to the table under the previous level."""
         with self.__open_tables() as conn:
             cur = conn.cursor()
+            if self.levels > lvlid:
+                # Level already exists, replace it
+                cur.execute("DROP FROM levels WHERE lvlid = ?", (lvlid,))
+                cur.execute("DROP FROM floors WHERE lvlid = ?", (lvlid,))
             cur.execute("INSERT INTO levels(lvlid, note, floors) VALUES(?, ?, ?)", (lvlid, note, len(floors)))
             for i, img in floors.items():
                 cur.execute("INSERT INTO floors(lvlid, floorid, img) VALUES(?, ?, ?)", (lvlid, i, pickle.dumps(img)))
