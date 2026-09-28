@@ -37,22 +37,30 @@ drawer_map: Dict[str, LevelDrawer] = {
 def create_level(
     spec: LevelSpec,
     entrances: List[Point],
+    exits: List[Point],
     level_textures: FillPatterns,
     level_number: int,
     savefile: DungenSave,
-    bottom_level: bool,
 ) -> Tuple[List[Point], List[svg.SVG]]:
     """Creates a level from a spec."""
     imgs = []
     stairs_up = entrances
     num_floors = random.randint(spec.floors.lower, spec.floors.upper)
     for floor_number in range(num_floors):
-        stairs_bound = spec.stairs_down
+        stairs_down: List[Point] = []
         rooms_bound = spec.rooms
-        if bottom_level and floor_number == num_floors - 1:
+        if floor_number == num_floors - 1:
             # last level
-            stairs_bound = Bound(0, 0)
-        elif spec.towers:
+            stairs_down = exits
+        else
+            stairs_down = [
+                Point(
+                    random.randint(0, spec.width - spec.room_width.upper), 
+                    random.randint(0, spec.height - spec.room_height.upper), 
+                ) for _ in range(spec.stairs_down)
+            ]
+            
+        if spec.towers:
             # if making towers, reduce number of rooms
             rooms_bound = Bound(
                 int(spec.rooms.lower * (floor_number / (num_floors - 1))),
@@ -62,9 +70,10 @@ def create_level(
         level = Level(
             spec.updated(rooms = rooms_bound, stairs_down = stairs_bound),
             stairs_up,
+            stairs_down,
             towers = spec.towers and floor_number < num_floors - 1,
         )
-        stairs_up = [r.location for r in level.rooms if Stairs.DOWN in r.stairs]
+        stairs_up = stairs_down
 
         try:
             drawer = drawer_map[spec.room_shape]
@@ -176,13 +185,20 @@ def main_func():
                     random.randint(0, level_spec.height - level_spec.room_height.upper), 
                 ) for _ in range(spec.entrances)
             ]
+        stairs_down = [
+            Point(
+                random.randint(0, level_spec.width - level_spec.room_width.upper), 
+                random.randint(0, level_spec.height - level_spec.room_height.upper), 
+            ) for _ in range(level_spec.stairs_down)
+        ] if i - starting_levels == spec.level_count else []
+        
         stairs_up, imgs = create_level(
             level_spec,
             stairs_up,
+            stairs_down,
             spec.textures[level_spec],
             i,
             savefile,
-            i - starting_levels == spec.level_count,
         )
 
         if args.svg_out is not None:
