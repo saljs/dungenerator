@@ -52,7 +52,7 @@ def create_level(
         if floor_number == num_floors - 1:
             # last level
             stairs_down = exits
-        else
+        else:
             stairs_down = [
                 Point(
                     random.randint(0, spec.width - spec.room_width.upper), 
