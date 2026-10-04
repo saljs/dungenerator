@@ -164,19 +164,19 @@ arrow keys: Move the map`
         }
         else if (ev.key === "ArrowLeft") {
             const svgEl = d3.zoomTransform(svg_view.svg);
-            svg_view.zoomTo(svgEl.x - scale, svgEl.y, svgEl.k);
+            svg_view.zoomTo(svgEl.x + scale, svgEl.y, svgEl.k);
         }
         else if (ev.key === "ArrowRight") {
             const svgEl = d3.zoomTransform(svg_view.svg);
-            svg_view.zoomTo(svgEl.x + scale, svgEl.y, svgEl.k);
+            svg_view.zoomTo(svgEl.x - scale, svgEl.y, svgEl.k);
         }
         else if (ev.key === "ArrowUp") {
             const svgEl = d3.zoomTransform(svg_view.svg);
-            svg_view.zoomTo(svgEl.x, svgEl.y - scale, svgEl.k);
+            svg_view.zoomTo(svgEl.x, svgEl.y + scale, svgEl.k);
         }
         else if (ev.key === "ArrowDown") {
             const svgEl = d3.zoomTransform(svg_view.svg);
-            svg_view.zoomTo(svgEl.x, svgEl.y + scale, svgEl.k);
+            svg_view.zoomTo(svgEl.x, svgEl.y - scale, svgEl.k);
         }
     });
     document.addEventListener("keyup", (ev) => {
