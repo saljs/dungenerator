@@ -19,7 +19,7 @@
             .book-popout > iframe {
                 width: 100%;
             }
-            .encounter-text {
+            .buttons, .encounter-text {
                 padding-bottom: 10px;
                 border-bottom: 2px solid rgb(160 160 160);
             }
@@ -63,6 +63,11 @@
                     <p>{{ line }}</p>
                 {% endfor %}
             </div>
+            <div class="buttons">
+                <button id="add-ally">Add ally</button>
+                <button id="tally-xp">Tally XP</button>
+                <button id="sort-init">Arrange in initiative order</button>
+            </div>
             <div id="encounter-players">
                 {% for item in room.encounter.items %}
                     <div class="encounter-player">
@@ -86,11 +91,6 @@
                         <button class="add-damage">Add damage</button>
                     </div>
                 {% endfor %}
-            </div>
-            <div class="buttons">
-                <button id="add-ally">Add ally</button>
-                <button id="tally-xp">Tally XP</button>
-                <button id="sort-init">Arrange in initiative order</button>
             </div>
         </div>
         <div class="container stretch book-popout" {% if  createBookLink('mm1', 1) == "#": %} style="display:none" {% endif %}>
